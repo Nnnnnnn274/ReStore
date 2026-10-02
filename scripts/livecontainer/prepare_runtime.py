@@ -3,6 +3,12 @@ from pathlib import Path
 import sys
 
 
+def write_source(path, source):
+    # Xcode's bundled Python does not support Path.write_text's newline argument.
+    with path.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(source)
+
+
 def replace_body(path, signature, body):
     source = path.read_text(encoding="utf-8")
     start = source.index(signature)
@@ -16,7 +22,7 @@ def replace_body(path, signature, body):
             depth -= 1
         end += 1
     source = source[:opening + 1] + "\n" + body + "\n" + source[end - 1:]
-    path.write_text(source, encoding="utf-8", newline="\n")
+    write_source(path, source)
 
 
 def prepare(root):
@@ -34,7 +40,7 @@ def prepare(root):
     for path in (shared, utilities):
         source = path.read_text(encoding="utf-8")
         if "#import <objc/message.h>" not in source:
-            path.write_text("#import <objc/message.h>\n" + source, encoding="utf-8", newline="\n")
+            write_source(path, "#import <objc/message.h>\n" + source)
 
     bootstrap = root / "LiveContainer/LCBootstrap.m"
     source = bootstrap.read_text(encoding="utf-8")
@@ -55,7 +61,7 @@ __attribute__((visibility("default"))) void ReStoreLiveContainerInitialize(void)
     end = source.index(end_marker, start) + len(end_marker)
     source = source[:start] + """    int (*hostMain)(int, char **) = dlsym(RTLD_DEFAULT, "ReStoreHostMain");
     return hostMain ? hostMain(argc, argv) : 1;""" + source[end:]
-    bootstrap.write_text(source, encoding="utf-8", newline="\n")
+    write_source(bootstrap, source)
 
 
 if __name__ == "__main__":

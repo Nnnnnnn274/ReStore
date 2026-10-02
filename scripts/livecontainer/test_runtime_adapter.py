@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 import os
 import subprocess
 import sys
@@ -99,7 +100,14 @@ source "$TEST_BUILD_SCRIPT"
                 destination = root / name
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(SOURCE / name, destination)
-            prepare(root)
+            modern_write_text = Path.write_text
+
+            def legacy_write_text(path, data, encoding=None, errors=None):
+                return modern_write_text(path, data, encoding=encoding, errors=errors)
+
+            # Exercise the API signature available in Xcode's older bundled Python.
+            with patch.object(Path, "write_text", legacy_write_text):
+                prepare(root)
             bootstrap = (root / FILES[1]).read_text(encoding="utf-8")
             self.assertIn("ReStoreLiveContainerInitialize", bootstrap)
             self.assertIn("invokeAppMain(selectedApp, selectedContainer, argc, argv)", bootstrap)
