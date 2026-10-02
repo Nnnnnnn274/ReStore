@@ -239,7 +239,6 @@ public class DatabaseManager: @unchecked Sendable
                 storeApp.source = altStoreSource
             }
                         
-            storeApp.name = "ReStore"
             altStoreSource.name = "ReStore"
 
             let serialNumber = CertificateManager.shared.getSigningCertificate(at: Bundle.Info.activeBundleURL)?.serialNumber
