@@ -14,6 +14,8 @@ Signing supports multiple Apple accounts saved in Keychain. Apps retain their si
 
 Custom signing works without Apple ID login. Import a `.p12`/`.pfx` bundle, or a `.cer`/`.crt`/`.der`/`.pem` certificate with its unencrypted private key, together with a matching `.mobileprovision`. Import separate profiles for extensions when a wildcard profile does not authorize them. The importer checks the key pair, certificate authorization, and expiration; installation checks device and app identifiers.
 
+Apple ID sign-in creates or reuses the account's certificate and private key automatically; there is no certificate password to enter. Password-free P12 imports accept a blank password. Certificate and key validation supports PEM and DER keys in PKCS#1 and PKCS#8 formats without a PKCS#12 import round trip. Embedded installer identities are reused only when their serial matches the requested certificate, and public-only portal refreshes preserve saved private keys.
+
 [LiveContainer](https://github.com/LiveContainer/LiveContainer) 3.8.0 is compiled from its pinned source and embedded during the ReStore build. No IPA injection step is required. Guests use its executable preparation and runtime hooks. Import, launch, search, and delete are available in the library. Preparing guests requires the certificate and private key that signed the running ReStore app. Opening a guest restarts the host process.
 
 ## Build

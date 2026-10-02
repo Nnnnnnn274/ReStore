@@ -79,10 +79,13 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
         let portalCertificates = try await DeveloperPortalProxy.shared.fetchCertificates(team: team)
         self.portalCertificates = portalCertificates
         
-        let mainBundleCertSerial = Bundle.main.object(forInfoDictionaryKey: Bundle.Info.certificateID) as? String
+        let mainBundleCertSerial = CertificateManager.shared.getSigningCertificate(at: Bundle.main.bundleURL)?.serialNumber
+            ?? Bundle.main.object(forInfoDictionaryKey: Bundle.Info.certificateID) as? String
         
         if let activeCert = CertificateManager.shared.activeCertificate,
-           let certificate = portalCertificates.first(where: { $0.serialNumber == activeCert.serialNumber }) 
+           let certificate = portalCertificates.first(where: {
+               CertificateStore.normalizedSerial($0.serialNumber) == CertificateStore.normalizedSerial(activeCert.serialNumber)
+           })
         {
             var keyStoreCert = activeCert.certificate
             keyStoreCert.machineIdentifier = certificate.machineIdentifier
@@ -96,12 +99,21 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
         }
         
         if let mainBundleCertSerial = mainBundleCertSerial,
-           let certificate = portalCertificates.first(where: { $0.serialNumber.lowercased() == mainBundleCertSerial.lowercased() }),
+           let certificate = portalCertificates.first(where: {
+               CertificateStore.normalizedSerial($0.serialNumber) == CertificateStore.normalizedSerial(mainBundleCertSerial)
+           }),
            var cert = CertificateManager.shared.getSignableCertificate(for: mainBundleCertSerial, fallbackPassword: certificate.machineIdentifier) 
         {
             cert.machineIdentifier = certificate.machineIdentifier
             debugLog("[CertificateProvisioningFlow] Using running bundle certificate (\(cert.serialNumber)) with valid private key from signable cache.")
             return cert
+        }
+
+        for certificate in portalCertificates {
+            if var cached = CertificateManager.shared.getLocalCertificate(serialNumber: certificate.serialNumber) {
+                cached.machineIdentifier = certificate.machineIdentifier
+                return cached
+            }
         }
         
         if portalCertificates.isEmpty {

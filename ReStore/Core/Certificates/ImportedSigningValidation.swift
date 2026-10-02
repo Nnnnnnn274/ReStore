@@ -4,32 +4,10 @@ import SideSign
 
 enum ImportedSigningValidation {
     static func validatePrivateKey(_ certificate: ALTCertificate) throws {
-        let data = try certificate.unencryptedP12Data()
-        var items: CFArray?
-        let options = [kSecImportExportPassphrase as String: ""] as CFDictionary
-        let status = SecPKCS12Import(data as CFData, options, &items)
-        guard status == errSecSuccess,
-              let entries = items as? [[String: Any]],
-              let identity = entries.first?[kSecImportItemIdentity as String],
-              CFGetTypeID(identity as CFTypeRef) == SecIdentityGetTypeID() else {
-            throw OperationError.invalidParameters("The certificate and private key do not form a valid signing identity.")
+        guard let data = certificate.data else {
+            throw OperationError.invalidParameters("The signing certificate contains no X.509 data.")
         }
-        let signingIdentity = identity as! SecIdentity
-        var importedCertificate: SecCertificate?
-        guard SecIdentityCopyCertificate(signingIdentity, &importedCertificate) == errSecSuccess,
-              let importedCertificate, let expected = certificate.data,
-              SecCertificateCopyData(importedCertificate) as Data == expected else {
-            throw OperationError.invalidParameters("The private key does not match the selected certificate.")
-        }
-        var privateKey: SecKey?
-        guard SecIdentityCopyPrivateKey(signingIdentity, &privateKey) == errSecSuccess,
-              let privateKey, let keyPublicPart = SecKeyCopyPublicKey(privateKey),
-              let certificatePublicPart = SecCertificateCopyKey(importedCertificate),
-              let keyBytes = SecKeyCopyExternalRepresentation(keyPublicPart, nil),
-              let certificateBytes = SecKeyCopyExternalRepresentation(certificatePublicPart, nil),
-              keyBytes as Data == certificateBytes as Data else {
-            throw OperationError.invalidParameters("The private key does not match the selected certificate.")
-        }
+        try SigningKeyPair.validate(certificateData: data, privateKeyData: certificate.privateKey)
     }
 
     static func permits(_ profile: ALTProvisioningProfile, bundleIdentifier: String) -> Bool {

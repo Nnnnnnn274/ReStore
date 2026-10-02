@@ -39,11 +39,7 @@ public final class CertificateManager: @unchecked Sendable {
     }
     
     public static func parse(_ data: Data, password: String?) throws -> ALTCertificate {
-        if let password = password {
-            return try ALTCertificate(p12Data: data, password: password)
-        } else {
-            return try ALTCertificate(p12Data: data)
-        }
+        try CertificateStore.load(data, password: password)
     }
 
     public static func convert(_ cert: ALTCertificate, password: String?) throws -> Data {
@@ -134,6 +130,7 @@ public final class CertificateManager: @unchecked Sendable {
     }
 
     public func storeCertificate(_ cert: ALTCertificate) throws {
+        try ImportedSigningValidation.validatePrivateKey(cert)
         let p12Data = try Self.convert(cert, password: getPassword(for: cert))
         try Keychain.shared.storeImportedCertificate(p12Data, serialNumber: cert.serialNumber)
         let serials = getImportedCertificateSerials()
@@ -164,7 +161,10 @@ public final class CertificateManager: @unchecked Sendable {
         guard let derData = x509.data else {
             throw OperationError.invalidParameters("The certificate contains no X.509 data.")
         }
-        try Keychain.shared.storeImportedCertificate(derData, serialNumber: x509.serialNumber)
+        // Portal refreshes only contain a public certificate. Keep any saved private key.
+        if getLocalCertificate(serialNumber: x509.serialNumber) == nil {
+            try Keychain.shared.storeImportedCertificate(derData, serialNumber: x509.serialNumber)
+        }
         let serials = getImportedCertificateSerials()
         if !serials.contains(x509.serialNumber) {
             var updatedSerials = serials
@@ -274,36 +274,18 @@ public final class CertificateManager: @unchecked Sendable {
         if FileManager.default.fileExists(atPath: targetBundle.certificateURL.path),
            let data = try? Data(contentsOf: targetBundle.certificateURL)
         {
-            let possiblePasswords: [(name: String, value: String?)] = [
-                ("incomingCertSerial", serialNumber),
-                ("fallbackPassword", fallbackPassword),
-                ("activeCertSerial", activeCertificate?.certificate.serialNumber),
-                ("machineIdentifier", activeCertificate?.certificate.machineIdentifier),
-                ("activeCertPassword", activeCertificate?.password),
-                ("keychainPassword", Keychain.shared.signingCertificatePassword),
-                ("nil", nil)
+            let possiblePasswords: [String?] = [
+                serialNumber,
+                fallbackPassword,
+                activeCertificate?.certificate.serialNumber,
+                activeCertificate?.certificate.machineIdentifier,
+                activeCertificate?.password,
+                Keychain.shared.signingCertificatePassword,
+                nil
             ]
 
-            var signableCert: ALTCertificate?
-            for (pwdName, password) in possiblePasswords {
-                verboseLog("[CertificateManager] getSignableCertificate: Attempting decryption with password source '\(pwdName)'...")
-                if let cert = try? ALTCertificate(p12Data: data, password: password) {
-                    signableCert = cert
-                    if cert.serialNumber.lowercased() == serialNumber.lowercased() {
-                        debugLog("[CertificateManager] getSignableCertificate: Decrypted embedded p12 using '\(pwdName)' with matching serial '\(cert.serialNumber)'.")
-                        break
-                    } else {
-                        verboseLog("[CertificateManager] getSignableCertificate: Decrypted embedded p12 using '\(pwdName)', but serial mismatch (certSerial: \(cert.serialNumber), targetSerial: \(serialNumber)).")
-                    }
-                } else {
-                    verboseLog("[CertificateManager] getSignableCertificate: Failed to decrypt embedded p12 using password source '\(pwdName)'.")
-                }
-            }
-
-            if signableCert != nil || serialNumber.isEmpty {
-                debugLog("[CertificateManager] getSignableCertificate: Returning certificate (serial: '\(signableCert?.serialNumber ?? "nil")', targetSerial: '\(serialNumber)').")
-                return signableCert
-            }
+            return CertificateStore.recover(data, serialNumber: serialNumber,
+                                            passwords: possiblePasswords)
         }
         return nil
     }

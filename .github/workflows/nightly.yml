@@ -116,6 +116,10 @@ jobs:
       # --------------------------------------------------
       # build and test
       # --------------------------------------------------
+      - name: Certificate and private key regression checks
+        if: steps.build_gate.outputs.should_skip != 'true'
+        run: python3 scripts/ci/test_signing_keys.py
+
       - name: Clean
         if: steps.build_gate.outputs.should_skip != 'true' && contains(github.event.head_commit.message, '[--clean-build]')
         run: |

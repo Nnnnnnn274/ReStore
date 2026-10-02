@@ -256,7 +256,7 @@ class CertificatesViewModel: ObservableObject {
         if certData.isPKCS12 {
             if !lastUsedPassword.isEmpty {
                 do {
-                    let altCert = try ALTCertificate(p12Data: certData, password: lastUsedPassword)
+                    let altCert = try CertificateStore.load(certData, password: lastUsedPassword)
                     if isDuplicate(cert: altCert, importedSerials: importedSerialsThisBatch) {
                         failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                         importFailedCount += 1
@@ -278,7 +278,7 @@ class CertificatesViewModel: ObservableObject {
             }
             
             do {
-                let altCert = try ALTCertificate(p12Data: certData)
+                let altCert = try CertificateStore.load(certData, password: nil)
                 if isDuplicate(cert: altCert, importedSerials: importedSerialsThisBatch) {
                     failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                     importFailedCount += 1
@@ -327,7 +327,7 @@ class CertificatesViewModel: ObservableObject {
         }
         
         do {
-            let altCert = try ALTCertificate(p12Data: certData, password: importPasswordInput)
+            let altCert = try CertificateStore.load(certData, password: importPasswordInput.isEmpty ? nil : importPasswordInput)
             if isDuplicate(cert: altCert, importedSerials: importedSerialsThisBatch) {
                 failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                 importFailedCount += 1

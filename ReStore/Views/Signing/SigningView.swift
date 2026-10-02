@@ -21,7 +21,7 @@ struct SigningView: View {
                 Text("New installs use your selection below. Refresh automatically uses the account or imported profile saved for each app.")
                     .font(.subheadline).foregroundColor(.secondary)
             }
-            Section(header: Text("Apple accounts")) {
+            Section(header: Text("Apple accounts"), footer: Text("ReStore creates or reuses your account's certificate and private key automatically. No certificate password or manual provisioning profile is needed.")) {
                 ForEach(accounts) { account in
                     SwiftUI.Button {
                         run {
@@ -157,8 +157,12 @@ struct SigningImportView: View {
         Form {
             Section(header: Text("1. Signing certificate"), footer: Text("Use a .p12/.pfx bundle, or a .cer/.crt/.der/.pem certificate with a separate private key.")) {
                 SwiftUI.Button(certificateName) { choose(.certificate) }
-                SecureField("Password for .p12 / .pfx", text: $password)
-                    .textContentType(.password)
+                if certificateData?.isPKCS12 == true {
+                    SecureField("Certificate password (optional)", text: $password)
+                        .textContentType(.password)
+                    Text("Leave blank if the certificate file has no password.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
                 if certificateData?.isPKCS12 != true {
                     SwiftUI.Button(keyName) { choose(.key) }
                 }
@@ -181,7 +185,7 @@ struct SigningImportView: View {
                 defer { if accessed { url.stopAccessingSecurityScopedResource() } }
                 let data = try Data(contentsOf: url)
                 switch fileKind {
-                case .certificate: certificateData = data; certificateName = url.lastPathComponent; keyData = nil; keyName = "Choose private key"
+                case .certificate: certificateData = data; certificateName = url.lastPathComponent; keyData = nil; keyName = "Choose private key"; password = ""
                 case .key: keyData = data; keyName = url.lastPathComponent
                 case .profile: profileData = data; profileName = url.lastPathComponent
                 }
@@ -203,7 +207,7 @@ struct SigningImportView: View {
                 guard let certificateData, let profileData else { return }
                 let certificate: ALTCertificate
                 if certificateData.isPKCS12 {
-                    certificate = try ALTCertificate(p12Data: certificateData, password: password)
+                    certificate = try CertificateStore.load(certificateData, password: password.isEmpty ? nil : password)
                 } else {
                     guard let x509 = ALTX509Certificate(data: certificateData), let keyData else {
                         throw OperationError.invalidParameters("Select a valid certificate and its matching private key.")
