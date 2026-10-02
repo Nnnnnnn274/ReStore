@@ -6,17 +6,17 @@ CURRENT_PROJECT_VERSION = 0700
 
 // Vars to be overwritten by `CodeSigning.xcconfig` if exists
 DEVELOPMENT_TEAM = S32Z3HMYVQ
-ORG_IDENTIFIER = com.SideStore
+ORG_IDENTIFIER = com.ReStore
 
 // Default is free for CI builds, override it using CodeSigning.xcconfig if required
-CODE_SIGN_ENTITLEMENTS = ./AltStore/AltStoreFree.entitlements
+CODE_SIGN_ENTITLEMENTS = ./ReStoreApp/ReStoreFree.entitlements
 
 // Codesigning settings defined optionally, see `CodeSigning.xcconfig.example`
 #include? "CodeSigning.xcconfig"
 
-PRODUCT_NAME = SideStore
+PRODUCT_NAME = ReStore
 
-BASE_BUNDLE_ID                                  = $(ORG_IDENTIFIER).SideStore
+BASE_BUNDLE_ID                                  = $(ORG_IDENTIFIER).ReStore
 MAIN_BUNDLE_IDENTIFIER[config=Debug]            = $(BASE_BUNDLE_ID).$(DEVELOPMENT_TEAM)
 MAIN_BUNDLE_IDENTIFIER[config=Release]          = $(BASE_BUNDLE_ID)
 APP_GROUP_IDENTIFIER                            = $(MAIN_BUNDLE_IDENTIFIER)

@@ -15,8 +15,8 @@ private nonisolated(unsafe) var appGroupsCache: [URL: (modDate: Date?, groups: [
 // @livecontainer
 private extension Bundle {
     @objc dynamic static let activeBundle: Bundle = Bundle.main
-    @objc dynamic static let storeAppBundleIdentifier = "com.SideStore.SideStore"
-    @objc dynamic static let appbundleIdentifier = "com.SideStore.SideStore"
+    @objc dynamic static let storeAppBundleIdentifier = "com.ReStore.ReStore"
+    @objc dynamic static let appbundleIdentifier = "com.ReStore.ReStore"
 }
 
 public extension Bundle
@@ -29,7 +29,7 @@ public extension Bundle
             let info = activeBundle.infoDictionary
             let version = (info?["CFBundleShortVersionString"] as? String) ?? "?.?.?"
             let build = (info?["CFBundleVersion"] as? String).map { " (\($0))" } ?? "(????)"
-            return NSLocalizedString(String(format: "Version %@%@", version, build), comment: "SideStore Version")
+            return NSLocalizedString(String(format: "Version %@%@", version, build), comment: "ReStore Version")
         }()
         public static let activeBundleIdentifier: String = activeBundle.bundleIdentifier!
         public static let storeAppBundleIdentifier = Bundle.storeAppBundleIdentifier

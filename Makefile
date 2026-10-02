@@ -169,15 +169,15 @@ MARKETING_VERSION ?=
 BUNDLE_ID_SUFFIX ?= 
 # Common build settings for xcodebuild
 COMMON_BUILD_SETTINGS = \
-	-project AltStore.xcodeproj \
-	-scheme SideStore \
+	-project ReStore.xcodeproj \
+	-scheme ReStore \
 	-sdk iphoneos \
 	-configuration $(BUILD_CONFIG) \
 	CODE_SIGNING_REQUIRED=NO \
 	AD_HOC_CODE_SIGNING_ALLOWED=YES \
 	CODE_SIGNING_ALLOWED=NO \
 	DEVELOPMENT_TEAM=XYZ0123456 \
-	ORG_IDENTIFIER=com.SideStore
+	ORG_IDENTIFIER=com.ReStore
 
 # Append MARKETING_VERSION if it’s not empty (coz otherwise the blank entry becomes override)
 ifneq ($(strip $(MARKETING_VERSION)),)
@@ -192,7 +192,7 @@ endif
 build:
 	@echo ">>>>>>>>> BUILD_CONFIG is set to '$(BUILD_CONFIG)', Building for $(BUILD_CONFIG) mode! <<<<<<<<<<"
 	@echo ""
-	@xcodebuild archive -archivePath ./SideStore \
+	@xcodebuild archive -archivePath ./ReStore \
 		$(COMMON_BUILD_SETTINGS)
 
 build-and-test:
@@ -247,33 +247,33 @@ sim-boot-check:
 
 clean-build:
 	@echo "Cleaning build artifacts..."
-	@xcodebuild clean -project AltStore.xcodeproj -scheme SideStore
+	@xcodebuild clean -project ReStore.xcodeproj -scheme ReStore
 
 fakesign-apps:
-	ldid -SAltStore/Resources/ReleaseEntitlements.plist SideStore.xcarchive/Products/Applications/SideStore.app/SideStore
-	ldid -SAltWidget/Resources/ReleaseEntitlements.plist SideStore.xcarchive/Products/Applications/SideStore.app/PlugIns/AltWidgetExtension.appex/AltWidgetExtension
+	ldid -SReStoreApp/Resources/ReleaseEntitlements.plist ReStore.xcarchive/Products/Applications/ReStore.app/ReStore
+	ldid -SReStoreWidget/Resources/ReleaseEntitlements.plist ReStore.xcarchive/Products/Applications/ReStore.app/PlugIns/ReStoreWidgetExtension.appex/ReStoreWidgetExtension
 
 fakesign-sidebackup:	
 	@echo ''
 	@echo "fake-signing sidebackup even though it will get resigned, only to retain its entitlements (appGroups)"
-	unzip -q -o SideStore.xcarchive/Products/Applications/SideStore.app/SideBackup.ipa -d SideStore.xcarchive/Products/Applications/SideStore.app/
-	ldid -SSideBackup/SideBackup.entitlements SideStore.xcarchive/Products/Applications/SideStore.app/Payload/SideBackup.app/SideBackup
-	pushd "SideStore.xcarchive/Products/Applications/SideStore.app/"  > /dev/null; \
-	rm -f     SideBackup.ipa; \
-	zip -r SideBackup.ipa Payload; \
+	unzip -q -o ReStore.xcarchive/Products/Applications/ReStore.app/ReStoreBackup.ipa -d ReStore.xcarchive/Products/Applications/ReStore.app/
+	ldid -SReStoreBackup/ReStoreBackup.entitlements ReStore.xcarchive/Products/Applications/ReStore.app/Payload/ReStoreBackup.app/ReStoreBackup
+	pushd "ReStore.xcarchive/Products/Applications/ReStore.app/"  > /dev/null; \
+	rm -f     ReStoreBackup.ipa; \
+	zip -r ReStoreBackup.ipa Payload; \
 	popd  > /dev/null
-	@rm -rf SideStore.xcarchive/Products/Applications/SideStore.app/Payload
+	@rm -rf ReStore.xcarchive/Products/Applications/ReStore.app/Payload
 
 fakesign: fakesign-apps fakesign-sidebackup				
 
 
 ipa:
 	@echo ''
-	@echo "fake-signing sidestore"
-	mkdir -p Payload/SideStore.app
-	cp -R SideStore.xcarchive/Products/Applications/SideStore.app/ Payload/SideStore.app/
-	rm -f     SideStore.ipa
-	zip -r SideStore.ipa Payload
+	@echo "fake-signing ReStore"
+	mkdir -p Payload/ReStore.app
+	cp -R ReStore.xcarchive/Products/Applications/ReStore.app/ Payload/ReStore.app/
+	rm -f     ReStore.ipa
+	zip -r ReStore.ipa Payload
 	rm -rf Payload*/
 
 # Global Variables
@@ -291,9 +291,9 @@ VAR_USED			:= $(if $(CONFIGURATION_BUILD_DIR),"CONFIGURATION_BUILD_DIR",$(if $(C
 
 TARGET_BUILD_DIR 	:= build
 TARGET_ARCHIVE_DIR 	:= sidebackup.xcarchive
-TARGET_NAME 		:= SideBackup.app
-TARGET_DSYM_NAME 	:= SideBackup.app.dSYM
-TARGET_IPA_NAME 	:= SideBackup.ipa
+TARGET_NAME 		:= ReStoreBackup.app
+TARGET_DSYM_NAME 	:= ReStoreBackup.app.dSYM
+TARGET_IPA_NAME 	:= ReStoreBackup.ipa
 
 
 ALT_APP_SRC_PARENT 	:= $(shell readlink -f "$(ROOT_DIR)")
@@ -360,28 +360,28 @@ copy-sidebackup: checkPaths
 # fakesign-sidebackup: copy-sidebackup
 # 	@echo "  Adding homebrew binaries to path and invoke ldid"
 # 	@export PATH="/usr/local/bin:/opt/homebrew/bin:$$PATH"; \
-# 	ldid -SSideBackup/Resources/ReleaseEntitlements.plist $(ALT_APP)
+# 	ldid -SReStoreBackup/Resources/ReleaseEntitlements.plist $(ALT_APP)
 # 	@echo "  fakesign completed"
 # 	@echo ""
 	
 # ipa-sidebackup:
 ipa-sidebackup: checkPaths copy-sidebackup 
 # ipa-sidebackup: checkPaths copy-sidebackup fakesign-sidebackup
-	@echo "  Creating IPA for SideBackup"
+	@echo "  Creating IPA for ReStoreBackup"
 	@rm -rf 	"$(ALT_APP_PAYLOAD_DST)"
 	@mkdir -p 	"$(ALT_APP_PAYLOAD_DST)/$(TARGET_NAME)"
 	@echo " Copying from $(ALT_APP_SRC) into $(ALT_APP_PAYLOAD_DST)"
 	@cp -R -f	"$(ALT_APP_SRC)/." "$(ALT_APP_PAYLOAD_DST)/$(TARGET_NAME)"
 	@pushd 		"$(ALT_APP_DST_ARCHIVE)" && zip -r "../../$(ALT_APP_IPA_DST)" Payload || popd
-	@echo "  IPA created: build/SideBackup.ipa"
+	@echo "  IPA created: build/ReStoreBackup.ipa"
 
 clean-sidebackup:
 	@echo ""
-	@echo "====> Cleaning up SideBackup related artifacts <===="
+	@echo "====> Cleaning up ReStoreBackup related artifacts <===="
 	@rm -rf build/sidebackup.xcarchive/
-	@rm -f build/SideBackup.ipa
-    #@rm -f AltStore/Resources/SideBackup.ipa
+	@rm -f build/ReStoreBackup.ipa
+    #@rm -f ReStoreApp/Resources/ReStoreBackup.ipa
 
 clean: clean-sidebackup
-	@rm -rf SideStore.ipa
+	@rm -rf ReStore.ipa
 	@rm -rf build/

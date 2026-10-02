@@ -12,7 +12,7 @@ Pods/
 build/
 DerivedData
 
-SideStore.xcarchive
+ReStore.xcarchive
 ## Various settings
 *.pbxuser
 !default.pbxuser
@@ -41,13 +41,13 @@ xcuserdata
 .idea/
 
 Payload/
-**/SideStore.ipa
-**/SideBackup.ipa
+**/ReStore.ipa
+**/ReStoreBackup.ipa
 **/*.dSYM
 
 Dependencies/.*-prebuilt-fetch-*
-SideStore/minimuxer/*
-SideStore/em_proxy/*
+ReStore/minimuxer/*
+ReStore/em_proxy/*
 !Dependencies/**/.gitkeep
 .nightly-build-num
 
@@ -57,8 +57,8 @@ SideStore/em_proxy/*
 
 # misc
 **/output.txt
-SideStore/.skip-prebuilt-fetch-minimuxer
-SideStore/.skip-prebuilt-fetch-em_proxy
+ReStore/.skip-prebuilt-fetch-minimuxer
+ReStore/.skip-prebuilt-fetch-em_proxy
 
 .git.bkp/
 

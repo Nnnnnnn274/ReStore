@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 #  decrypt_sideconf.py
-#  SideStore
+#  ReStore
 #
 #  Created by Magesh K on 8/3/26.
 #  Copyright © 2026 SideStore. All rights reserved.

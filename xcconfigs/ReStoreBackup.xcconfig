@@ -1,0 +1,6 @@
+#include "../Build.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(MAIN_BUNDLE_IDENTIFIER).ReStoreBackup
+CODE_SIGN_ENTITLEMENTS = ReStoreBackup/ReStoreBackup.entitlements
+
+#include? "../local.xcconfig"

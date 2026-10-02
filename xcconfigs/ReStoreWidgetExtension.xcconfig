@@ -1,0 +1,6 @@
+#include "../Build.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(MAIN_BUNDLE_IDENTIFIER).ReStoreWidget
+CODE_SIGN_ENTITLEMENTS = ReStoreWidget/ReStoreWidgetExtension.entitlements
+
+#include? "../local.xcconfig"

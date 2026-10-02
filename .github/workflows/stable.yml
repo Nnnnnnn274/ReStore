@@ -1,4 +1,4 @@
-name: Stable SideStore build
+name: Stable ReStore build
 
 on:
   push:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build SideStore - stable
+    name: Build ReStore - stable
     runs-on: macos-26
 
     env:
@@ -98,13 +98,13 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SideStore-${{ env.MARKETING_VERSION }}.ipa
-          path: SideStore.ipa
+          name: ReStore-${{ env.MARKETING_VERSION }}.ipa
+          path: ReStore.ipa
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SideStore-${{ env.MARKETING_VERSION }}-dSYMs.zip
-          path: SideStore.dSYMs.zip
+          name: ReStore-${{ env.MARKETING_VERSION }}-dSYMs.zip
+          path: ReStore.dSYMs.zip
 
       - name: Generate Metadata
         run: |

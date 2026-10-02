@@ -31,94 +31,94 @@
 'GUI/UIKit':
   - changed-files:
     - any-glob-to-any-file:
-      - 'SideStore/Views/*'
-      - 'SideStore/Views/**/*'
-      - 'AltStore/App Detail/*.swift'
-      - 'AltStore/Browse/*.swift'
-      - 'AltStore/Authentication/*.swift'
-      - 'AltStore/My Apps/*.swift'
-      - 'AltStore/News/*.swift'
-      - 'AltStore/Settings/*.swift'
-      - 'AltStore/Sources/*.swift'
+      - 'ReStore/Views/*'
+      - 'ReStore/Views/**/*'
+      - 'ReStoreApp/App Detail/*.swift'
+      - 'ReStoreApp/Browse/*.swift'
+      - 'ReStoreApp/Authentication/*.swift'
+      - 'ReStoreApp/My Apps/*.swift'
+      - 'ReStoreApp/News/*.swift'
+      - 'ReStoreApp/Settings/*.swift'
+      - 'ReStoreApp/Sources/*.swift'
 
 'Resources | Assets':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Resources/*'
-      - 'AltStore/Resources/**/*'
-      - 'AltStore/Base.lproj/*'
-      - 'AltStore/Base.lproj/**/*'
-      - 'SideBackup/Assets.xcassets/*'
-      - 'SideBackup/Assets.xcassets/**/*'
-      - 'AltWidget/Assets.xcassets/*'
-      - 'AltWidget/Assets.xcassets/**/*'
+      - 'ReStoreApp/Resources/*'
+      - 'ReStoreApp/Resources/**/*'
+      - 'ReStoreApp/Base.lproj/*'
+      - 'ReStoreApp/Base.lproj/**/*'
+      - 'ReStoreBackup/Assets.xcassets/*'
+      - 'ReStoreBackup/Assets.xcassets/**/*'
+      - 'ReStoreWidget/Assets.xcassets/*'
+      - 'ReStoreWidget/Assets.xcassets/**/*'
 
 # Tools / Features
 'Backup':
   - changed-files:
     - any-glob-to-any-file:
-      - 'SideBackup/*'
-      - 'SideBackup/**/*'
+      - 'ReStoreBackup/*'
+      - 'ReStoreBackup/**/*'
 
 'Widget':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltWidget/*'
-      - 'AltWidget/**/*'
+      - 'ReStoreWidget/*'
+      - 'ReStoreWidget/**/*'
 
 'App Detail':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/App Detail/*'
-      - 'AltStore/App Detail/**/*'
+      - 'ReStoreApp/App Detail/*'
+      - 'ReStoreApp/App Detail/**/*'
 
 'App IDs':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/App IDs/*'
-      - 'AltStore/App IDs/**/*'
+      - 'ReStoreApp/App IDs/*'
+      - 'ReStoreApp/App IDs/**/*'
 
 'Authentication':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Authentication/*'
-      - 'AltStore/Authentication/**/*'
+      - 'ReStoreApp/Authentication/*'
+      - 'ReStoreApp/Authentication/**/*'
 
 'Browse':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Browse/*'
-      - 'AltStore/Browse/**/*'
+      - 'ReStoreApp/Browse/*'
+      - 'ReStoreApp/Browse/**/*'
 
 'Managing Apps':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Managing Apps/*'
-      - 'AltStore/Managing Apps/**/*'
+      - 'ReStoreApp/Managing Apps/*'
+      - 'ReStoreApp/Managing Apps/**/*'
 
 'My Apps':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/My Apps/*'
-      - 'AltStore/My Apps/**/*'
+      - 'ReStoreApp/My Apps/*'
+      - 'ReStoreApp/My Apps/**/*'
 
 'News':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/News/*'
-      - 'AltStore/News/**/*'
+      - 'ReStoreApp/News/*'
+      - 'ReStoreApp/News/**/*'
 
 'Settings':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Settings/*'
-      - 'AltStore/Settings/**/*'
+      - 'ReStoreApp/Settings/*'
+      - 'ReStoreApp/Settings/**/*'
 
 'Sources':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Sources/*'
-      - 'AltStore/Sources/**/*'
+      - 'ReStoreApp/Sources/*'
+      - 'ReStoreApp/Sources/**/*'
 
 # Core Components
 'Core':
@@ -133,36 +133,36 @@
       - 'Shared/*'
       - 'Shared/**/*'
 
-'SideStore':
+'ReStore':
   - changed-files:
     - any-glob-to-any-file:
-      - 'SideStore/*'
-      - 'SideStore/**/*'
+      - 'ReStore/*'
+      - 'ReStore/**/*'
 
 # Other Core Components
 'Operations':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Operations/*'
-      - 'AltStore/Operations/**/*'
+      - 'ReStoreApp/Operations/*'
+      - 'ReStoreApp/Operations/**/*'
 
 'Intents':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Intents/*'
-      - 'AltStore/Intents/**/*'
+      - 'ReStoreApp/Intents/*'
+      - 'ReStoreApp/Intents/**/*'
 
 'Permissions':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/Permissions/*'
-      - 'AltStore/Permissions/**/*'
+      - 'ReStoreApp/Permissions/*'
+      - 'ReStoreApp/Permissions/**/*'
 
 'App Lifecycle':
   - changed-files:
     - any-glob-to-any-file:
-      - 'AltStore/AppDelegate.swift'
-      - 'AltStore/SceneDelegate.swift'
-      - 'AltStore/TabBarController.swift'
-      - 'AltStore/LaunchViewController.swift'
-      - 'AltStore/AppConstants.swift'
+      - 'ReStoreApp/AppDelegate.swift'
+      - 'ReStoreApp/SceneDelegate.swift'
+      - 'ReStoreApp/TabBarController.swift'
+      - 'ReStoreApp/LaunchViewController.swift'
+      - 'ReStoreApp/AppConstants.swift'

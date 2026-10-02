@@ -78,7 +78,7 @@ def count_new_commits(last_commit):
 # ----------------------------------------------------------
 def dump_project_settings(outdir=None):
     outfile = Path(outdir).resolve() / BUILD_SETTINGS_OUTFILE if outdir else BUILD_SETTINGS_OUTFILE
-    run(f"xcodebuild -project AltStore.xcodeproj -target SideStore -showBuildSettings > '{outfile}' 2>&1")
+    run(f"xcodebuild -project ReStore.xcodeproj -target ReStore -showBuildSettings > '{outfile}' 2>&1")
 
 def _extract_setting(cmd):
     out = runAndGet(cmd + " || true").strip()   # prevent grep failure from aborting
@@ -94,7 +94,7 @@ def _read_dumped_build_setting(name):
 
 def query_build_setting(name):
     return _extract_setting(
-        f"xcodebuild -project AltStore.xcodeproj -target SideStore -showBuildSettings 2>&1 "
+        f"xcodebuild -project ReStore.xcodeproj -target ReStore -showBuildSettings 2>&1 "
         f"| grep '{name} = ' "
         "| tail -1 "
         "| sed -e 's/.*= //g'"
@@ -157,7 +157,7 @@ def build():
         raise
     run("make fakesign | tee -a build/logs/build.log")
     run("make ipa | tee -a build/logs/build.log")
-    run("zip -r -9 ./SideStore.dSYMs.zip ./SideStore.xcarchive/dSYMs")
+    run("zip -r -9 ./ReStore.dSYMs.zip ./ReStore.xcarchive/dSYMs")
 
 # ----------------------------------------------------------
 # TESTS BUILD
@@ -279,6 +279,7 @@ def generate_metadata(release_tag, short_commit, marketing_version, channel, bun
         cmd += f" --last-successful-commit {last_successful_commit}"
 
     run(cmd)
+    run(f"python3 {SCRIPTS}/generate_restore_source.py {ROOT / metadata} {ROOT / 'build/source.json'}")
 
 def deploy(repo, source_json, release_tag, marketing_version):
     repo = (ROOT / repo).resolve()
@@ -452,7 +453,7 @@ def upload_release(release_name, release_tag, commit_sha, repo, upstream_tag_rec
 
     run(
         f'gh release upload "{release_tag}" '
-        f'SideStore.ipa SideStore.dSYMs.zip build-logs.zip '
+        f'ReStore.ipa ReStore.dSYMs.zip build-logs.zip build/source.json '
         f'--clobber'
     )
 

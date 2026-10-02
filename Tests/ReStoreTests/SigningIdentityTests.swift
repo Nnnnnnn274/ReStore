@@ -1,6 +1,6 @@
 import XCTest
 import SideSign
-@testable import SideStore
+@testable import ReStore
 
 final class SigningIdentityTests: XCTestCase {
     func testWildcardSignedIdentifiersBecomeConcreteAndKeepTheProfilePrefix() throws {

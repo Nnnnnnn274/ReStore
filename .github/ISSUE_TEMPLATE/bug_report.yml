@@ -8,9 +8,9 @@ body:
     attributes:
       value: |
         ## Please note that the issue tracker is not for support
-        Thanks for taking the time to fill out this bug report! Before you continue filling out the report, please **[search in GitHub Issues](https://github.com/SideStore/SideStore/issues?q=is%3Aissue+is%3Aopen) for the bug you are experiencing** in case it has already been reported.
+        Thanks for taking the time to fill out this bug report! Before you continue filling out the report, please **[search in GitHub Issues](https://github.com/Nnnnnnn274/ReStore/issues?q=is%3Aissue+is%3Aopen) for the bug you are experiencing** in case it has already been reported.
         
-        **Please use [Discord](https://discord.gg/sidestore-949183273383395328) or [GitHub Discussions](https://github.com/SideStore/SideStore/discussions) for support.**
+        **Please use [Discord](https://github.com/Nnnnnnn274/ReStore/issues) or [GitHub Discussions](https://github.com/Nnnnnnn274/ReStore/discussions) for support.**
   - type: textarea
     id: description
     attributes:
@@ -29,8 +29,8 @@ body:
   - type: input
     id: app-version
     attributes:
-      label: What version of SideStore are you using?
-      description: To retrieve this, go to `Settings` in the SideStore app and scroll down to the bottom.
+      label: What version of ReStore are you using?
+      description: To retrieve this, go to `Settings` in the ReStore app and scroll down to the bottom.
     validations:
       required: true
   - type: textarea

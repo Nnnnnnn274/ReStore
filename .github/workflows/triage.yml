@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   triage:
-    if: github.repository == 'SideStore/SideStore'
+    if: github.repository == 'ReStore/ReStore'
     runs-on: ubuntu-latest
     steps:
     - name: Label PR based on changed files
@@ -39,7 +39,7 @@ jobs:
 
           A maintainer will review your issue shortly. Please make sure you've filled out all relevant information in the issue template.
         pr_message: |-
-          ## Thank you for submitting a contribution to SideStore!
+          ## Thank you for submitting a contribution to ReStore!
 
           As this is your first pull request, [please be aware of our contributing guidelines](https://docs.sidestore.io/docs/contributing).
 

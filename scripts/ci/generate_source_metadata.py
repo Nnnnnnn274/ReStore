@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 import argparse
 import sys
+import os
+from urllib.parse import quote
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -71,6 +73,7 @@ def main():
     p.add_argument("--short-commit", required=True)
     p.add_argument("--release-channel", required=True)
     p.add_argument("--bundle-id", required=True)
+    p.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", "Nnnnnnn274/ReStore"))
 
     # optional
     p.add_argument("--last-successful-commit")
@@ -150,8 +153,8 @@ def main():
         "size": file_size(ipa_path),
         "sha256": sha256(ipa_path),
         "download_url": (
-            "https://github.com/SideStore/SideStore/releases/download/"
-            f"{args.release_tag}/SideStore.ipa"
+            f"https://github.com/{args.repository}/releases/download/"
+            f"{quote(args.release_tag, safe='')}/{quote(ipa_path.name)}"
         ),
         "localized_description": localized_description,
     }

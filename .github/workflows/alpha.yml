@@ -1,4 +1,4 @@
-name: Alpha SideStore Build
+name: Alpha ReStore Build
 
 on:
   push:
@@ -171,20 +171,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SideStore-${{ env.MARKETING_VERSION }}.ipa
-          path: SideStore.ipa
+          name: ReStore-${{ env.MARKETING_VERSION }}.ipa
+          path: ReStore.ipa
       - uses: actions/upload-artifact@v4
         with:
-          name: SideStore-${{ env.MARKETING_VERSION }}-dSYMs.zip
-          path: SideStore.dSYMs.zip
-
-      - uses: actions/checkout@v4
-        if: env.DEPLOY_KEY != ''
-        with:
-          repository: "SideStore/apps-v2.json"
-          ref: "main"
-          token: ${{ secrets.CROSS_REPO_PUSH_KEY }}
-          path: "SideStore/apps-v2.json"
+          name: ReStore-${{ env.MARKETING_VERSION }}-dSYMs.zip
+          path: ReStore.dSYMs.zip
 
       - name: Generate Metadata
         run: |
@@ -201,18 +193,6 @@ jobs:
             "$BUNDLE_ID" \
             "$IPA_NAME" \
             "$LAST_SUCCESSFUL_COMMIT"
-
-      - name: Deploy
-        if: env.DEPLOY_KEY != ''
-        run: |
-          SOURCE_JSON="_includes/source.json"
-
-          python3 scripts/ci/workflow.py deploy \
-            SideStore/apps-v2.json \
-            "$SOURCE_JSON" \
-            "$CHANNEL" \
-            "$MARKETING_VERSION"
-      
 
       # --------------------------------------------------
       # upload release to GH

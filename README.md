@@ -1,75 +1,45 @@
-# SideStore
+# ReStore
 
-## ReStore continuation
+ReStore is an independent continuation of [SideStore](https://github.com/SideStore/SideStore), which originated from [AltStore](https://github.com/rileytestut/AltStore). ReStore is not an official SideStore or AltStore release.
 
-This checkout adds a two-section iOS interface: **LiveContainer** and **SideStore**. The large section buttons have a persistent hide/show control. SideStore's workspace keeps News, Sources, Browse, My Apps, Settings, and the new Signing screen accessible.
+[![Nightly ReStore build](https://github.com/Nnnnnnn274/ReStore/actions/workflows/nightly.yml/badge.svg)](https://github.com/Nnnnnnn274/ReStore/actions/workflows/nightly.yml)
 
-Signing supports multiple Apple accounts, saved in Keychain. New installs use the selected account; existing apps retain their signing account and refresh sequentially with that account's credentials and certificate. Removing an account leaves its apps assigned to it, so refreshing asks for the missing account instead of silently changing the signer.
+[Download ReStore](https://github.com/Nnnnnnn274/ReStore/releases/tag/nightly) · [Report a ReStore issue](https://github.com/Nnnnnnn274/ReStore/issues)
 
-The Signing screen and onboarding also accept custom identities without Apple ID login. Import a `.p12`/`.pfx` bundle, or a `.cer`/`.crt`/`.der`/`.pem` certificate with its unencrypted private key, together with a matching `.mobileprovision`. The importer verifies the key pair, certificate authorization, and expiration. Installation also checks the device and each app/extension identifier. Import separate profiles for extensions when a wildcard profile does not authorize them. Assign renewed profiles to existing apps through All provisioning profiles.
+## Features
 
-LiveContainer 3.8.0 is compiled from the pinned source submodule and embedded as frameworks and libraries during the SideStore build. The build adapter changes a derived copy of the source to return to ReStore's UI and obtain signing keys from the host's Keychain provider. Container guests use LiveContainer's executable preparation and runtime hooks. Import, launch, search, and delete are available in the app library. Preparing guests requires the certificate and private key that signed the running ReStore app; re-sign ReStore if that identity is unavailable. Opening a guest restarts the host process.
+The iOS interface has two large sections: **LiveContainer** and **ReStore**, with a persistent hide/show control. The ReStore workspace includes News, Sources, Browse, My Apps, Settings, and Signing.
 
-### Building and validation
+Signing supports multiple Apple accounts saved in Keychain. Apps retain their signing account and refresh sequentially with that account's credentials and certificate. Removing an account leaves its apps assigned to it, so refreshing requests the missing account instead of silently changing the signer.
 
-Use macOS and an Xcode version supporting this project's synchronized groups. Initialize recursive dependencies before opening `AltStore.xcodeproj`:
+Custom signing works without Apple ID login. Import a `.p12`/`.pfx` bundle, or a `.cer`/`.crt`/`.der`/`.pem` certificate with its unencrypted private key, together with a matching `.mobileprovision`. Import separate profiles for extensions when a wildcard profile does not authorize them. The importer checks the key pair, certificate authorization, and expiration; installation checks device and app identifiers.
+
+[LiveContainer](https://github.com/LiveContainer/LiveContainer) 3.8.0 is compiled from its pinned source and embedded during the ReStore build. No IPA injection step is required. Guests use its executable preparation and runtime hooks. Import, launch, search, and delete are available in the library. Preparing guests requires the certificate and private key that signed the running ReStore app. Opening a guest restarts the host process.
+
+## Build
+
+Requires macOS, Xcode supporting synchronized project groups (CI uses Xcode 26.4), and an iOS 15+ device. Initialize dependencies, configure signing using `CodeSigning.xcconfig.sample`, and open `ReStore.xcodeproj`:
 
 ```sh
 git submodule update --init --recursive
 python3 scripts/livecontainer/test_runtime_adapter.py
+make build fakesign ipa
 ```
 
-Configure signing using `CodeSigning.xcconfig.sample`, then build the SideStore target for an iOS device. Its **Build Built-in LiveContainer** phase compiles and embeds the runtime automatically; no IPA injection step is needed. Simulator builds omit the guest runtime. The `ReStoreTests` scheme contains account isolation and provisioning identifier regression tests:
+This produces `ReStore.ipa`. The **ReStore** target compiles and embeds LiveContainer automatically. Simulator builds omit the guest runtime. For signing regression tests, choose an installed simulator on your Mac:
 
 ```sh
-xcodebuild test -project AltStore.xcodeproj -scheme ReStoreTests \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -project ReStore.xcodeproj -scheme ReStoreTests -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
-Choose an installed simulator name on your Mac. Windows can run the adapter tests and inspect project configuration, but cannot build or run the UIKit, Security, signing, installation, or guest runtime integration. A device build and tests with two accounts and real matching signing identities remain necessary before distributing an IPA.
+The main app uses `com.ReStore.ReStore`, with ReStore-branded backup and widget targets. It installs separately from older SideStore-branded builds; iOS does not transfer their sandbox or Keychain automatically. Export needed accounts and app data before switching. Internal database filenames and legacy installed-app URL schemes remain compatible with existing backup formats. New host links use `restore://`.
 
-> SideStore is an *untethered, community driven* alternative app store for non-jailbroken iOS devices 
+Nightly releases include `ReStore.ipa`, debug symbols, and `source.json`, containing download URLs for this repository. Add the [ReStore source](https://github.com/Nnnnnnn274/ReStore/releases/download/nightly/source.json) to receive ReStore builds.
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://makeapullrequest.com)
-[![Nightly SideStore build](https://github.com/SideStore/SideStore/actions/workflows/nightly.yml/badge.svg)](https://github.com/SideStore/SideStore/actions/workflows/nightly.yml)
-[![.github/workflows/beta.yml](https://github.com/SideStore/SideStore/actions/workflows/beta.yml/badge.svg)](https://github.com/SideStore/SideStore/actions/workflows/beta.yml)
-[![Discord](https://img.shields.io/discord/949183273383395328?label=Discord)](https://dis.sidestore.io)
+Original ReStore monogram assets are checked in. To regenerate their sizes and color variants, run `python3 scripts/branding/generate_icons.py` with Pillow installed.
 
-![Alt](https://repobeats.axiom.co/api/embed/3a329ce95955690b9a9366f8d5598626a847d96c.svg "Repobeats analytics image")
+## Credits and license
 
-SideStore is an iOS application that allows you to sideload apps onto your iOS device with just your Apple ID. SideStore resigns apps with your personal development certificate, and then uses a [specially designed VPN](https://github.com/jkcoxson/em_proxy) in order to trick iOS into installing them. SideStore will periodically "refresh" your apps in the background, to keep their normal 7-day development period from expiring.
+Upstream authorship and license notices are preserved. ReStore uses SideStore and AltStore code, [SideSign](https://github.com/SideStore/SideSign), [Minimuxer](https://github.com/SideStore/minimuxer), [EM Proxy](https://github.com/jkcoxson/em_proxy), LiveContainer, and other dependencies credited in their source and license files. Installation uses [LocalDevVPN](https://github.com/jkcoxson/LocalDevVPN).
 
-SideStore's goal is to provide an untethered sideloading experience. It's a community driven fork of [AltStore](https://github.com/rileytestut/AltStore), and has already implemented some of the community's most-requested features.
-
-(Contributions are welcome! 🙂)
-
-## Requirements
-- Xcode 15
-- iOS 14+
-- Rustup (`brew install rustup`)
-
-Why iOS 14? Targeting such a recent version of iOS allows us to accelerate development, especially since not many developers have older devices to test on. This is corrobated by the fact that SwiftUI support is much better, allowing us to transistion to a more modern UI codebase.
-## Project Overview
-
-### SideStore
-SideStore is a just regular, sandboxed iOS application. The AltStore app target contains the vast majority of SideStore's functionality, including all the logic for downloading and updating apps through SideStore. SideStore makes heavy use of standard iOS frameworks and technologies most iOS developers are familiar with.
-
-### EM Proxy
-[EM Proxy](https://github.com/jkcoxson/em_proxy) powers the defining feature of SideStore: untethered app installation. By leveraging a custom-built App Store app with additional entitlements ([LocalDevVPN](https://github.com/jkcoxson/LocalDevVPN)) to create the VPN tunnel for us, it allows SideStore to take advantage of [Jitterbug](https://github.com/osy/Jitterbug)'s loopback method without requiring a paid developer account.
-
-### Minimuxer
-[Minimuxer](https://github.com/jkcoxson/minimuxer) is a lockdown muxer that can run inside iOS’s sandbox. It replicates Apple’s usbmuxd protocol on macOS to “discover” devices to interface with LocalDevVPN on-device.
-
-### Roxas
-[Roxas](https://github.com/rileytestut/roxas) is Riley Testut's internal framework from AltStore used across many of their iOS projects, developed to simplify a variety of common tasks used in iOS development.
-
-We're hoping to eventually eliminate our dependency on it, as it increases the amount of unnecessary Objective-C in the project.
-
-## Contributing/Compilation Instructions
-
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md)
-
-## Licensing
-
-This project is licensed under the **AGPLv3 license**.
+This project is licensed under [AGPLv3](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions to this independent fork.
