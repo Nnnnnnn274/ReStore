@@ -155,8 +155,8 @@ def build():
             print("\nRaw build output at failure:\n" + "\n".join(lines[-200:]),
                   file=sys.stderr, flush=True)
         raise
-    run("make fakesign | tee -a build/logs/build.log")
-    run("make ipa | tee -a build/logs/build.log")
+    run("set -o pipefail && make fakesign | tee -a build/logs/build.log")
+    run("set -o pipefail && make ipa | tee -a build/logs/build.log")
     run("zip -r -9 ./ReStore.dSYMs.zip ./ReStore.xcarchive/dSYMs")
 
 # ----------------------------------------------------------
