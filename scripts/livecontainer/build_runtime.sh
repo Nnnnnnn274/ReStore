@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+trap 'runtime_status=$?; if [[ "$runtime_status" -ne 0 ]]; then echo "error: Built-in LiveContainer build failed with exit status $runtime_status." >&2; fi' EXIT
 
 # Build the runtime from source; it is shipped inside this app, with no IPA injection step.
 if [[ "${PLATFORM_NAME:-}" != "iphoneos" ]]; then
