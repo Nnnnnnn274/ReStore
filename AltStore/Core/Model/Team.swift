@@ -78,6 +78,11 @@ public class Team: BaseEntity
         self.identifier = team.identifier
         self.type = team.type
     }
+
+    func update(account: Account)
+    {
+        self.account = account
+    }
 }
 
 public extension Team

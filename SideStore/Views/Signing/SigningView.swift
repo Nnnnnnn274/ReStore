@@ -23,7 +23,7 @@ struct SigningView: View {
             }
             Section(header: Text("Apple accounts")) {
                 ForEach(accounts) { account in
-                    Button {
+                    SwiftUI.Button {
                         run {
                             try await SavedSigningAccounts.shared.selectAccount(account.id)
                             await reload()
@@ -42,7 +42,7 @@ struct SigningView: View {
                         }
                     }
                     .swipeActions {
-                        Button("Remove", role: .destructive) {
+                        SwiftUI.Button("Remove", role: .destructive) {
                             run {
                                 try await SavedSigningAccounts.shared.remove(account.id)
                                 await reload()
@@ -50,7 +50,7 @@ struct SigningView: View {
                         }
                     }
                 }
-                Button {
+                SwiftUI.Button {
                     run {
                         let result = try await AuthManager.shared.signIn(presentingViewController: presentingViewController,
                                                                         skipResign: !accounts.isEmpty, skipHowTos: true)
@@ -63,11 +63,11 @@ struct SigningView: View {
                 } label: { Label("Add Apple account", systemImage: "person.badge.plus") }
             }
             Section(header: Text("Imported signing"), footer: Text("A usable identity includes a certificate, its matching private key, and a provisioning profile. Apple ID login is not required.")) {
-                Button { importing = true } label: {
+                SwiftUI.Button { importing = true } label: {
                     Label("Import certificate and provisioning profile", systemImage: "square.and.arrow.down")
                 }
                 ForEach(profiles, id: \.uuid) { profile in
-                    Button {
+                    SwiftUI.Button {
                         run {
                             try await SavedSigningAccounts.shared.selectProfile(profile)
                             await reload()
@@ -101,7 +101,7 @@ struct SigningView: View {
             NavigationView { SigningImportView() }
         }
         .alert("Signing", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) { errorMessage = nil }
+            SwiftUI.Button("OK", role: .cancel) { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
     }
 
@@ -156,24 +156,24 @@ struct SigningImportView: View {
     var body: some View {
         Form {
             Section(header: Text("1. Signing certificate"), footer: Text("Use a .p12/.pfx bundle, or a .cer/.crt/.der/.pem certificate with a separate private key.")) {
-                Button(certificateName) { choose(.certificate) }
+                SwiftUI.Button(certificateName) { choose(.certificate) }
                 SecureField("Password for .p12 / .pfx", text: $password)
                     .textContentType(.password)
                 if certificateData?.isPKCS12 != true {
-                    Button(keyName) { choose(.key) }
+                    SwiftUI.Button(keyName) { choose(.key) }
                 }
             }
             Section(header: Text("2. Provisioning profile"), footer: Text("The profile must authorize this certificate, your device, and the app you want to sign.")) {
-                Button(profileName) { choose(.profile) }
+                SwiftUI.Button(profileName) { choose(.profile) }
             }
             Section {
-                Button("Import and use for new installs") { save() }
+                SwiftUI.Button("Import and use for new installs") { save() }
                     .disabled(certificateData == nil || profileData == nil || busy)
             }
         }
         .navigationTitle("Import signing identity")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(busy) } }
+        .toolbar { ToolbarItem(placement: .cancellationAction) { SwiftUI.Button("Cancel") { dismiss() }.disabled(busy) } }
         .fileImporter(isPresented: $choosingFile, allowedContentTypes: importTypes) { result in
             do {
                 let url = try result.get()
@@ -188,7 +188,7 @@ struct SigningImportView: View {
             } catch { errorMessage = error.localizedDescription }
         }
         .alert("Could not import", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) { errorMessage = nil }
+            SwiftUI.Button("OK", role: .cancel) { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
         .overlay { if busy { ProgressView().padding(24).background(.regularMaterial).cornerRadius(16) } }
     }

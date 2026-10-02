@@ -1,5 +1,6 @@
 #if os(iOS)
 import Foundation
+import Combine
 import UIKit
 import Security
 import SideSign

@@ -294,7 +294,7 @@ private extension SignInOperation {
             }
             
             team.update(team: altTeam)
-            team.account = account
+            team.update(account: account)
             
             if makeActive {
                 // Account

@@ -129,9 +129,12 @@ actor SavedSigningAccounts {
                 saved.isActiveAccount = saved.identifier == account.id
                 if saved.isActiveAccount { restoredAccount = saved }
             }
+            guard let restoredAccount else {
+                throw OperationError.invalidParameters("The previous signing account could not be restored.")
+            }
             for team in try context.fetch(Team.fetchRequest()) {
                 team.isActiveTeam = team.identifier == account.teamIdentifier
-                if team.isActiveTeam { team.account = restoredAccount }
+                if team.isActiveTeam { team.update(account: restoredAccount) }
             }
             try context.save()
         }

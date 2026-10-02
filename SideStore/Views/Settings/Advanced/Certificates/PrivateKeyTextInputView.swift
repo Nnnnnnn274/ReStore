@@ -84,7 +84,7 @@ struct PrivateKeyTextInputView: View {
                             do {
                                 let formattedKey = try viewModel.validateAndFormatPrivateKey(data: keyData)
                                 let signableCert = ALTCertificate(x509: cert, privateKey: formattedKey)
-                                viewModel.saveLocalCertificate(signableCert)
+                                try viewModel.saveLocalCertificate(signableCert)
                                 viewModel.loadCertificates(presentingViewController: nil)
                                 showSuccessAlert = true
                             } catch {

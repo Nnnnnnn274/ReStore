@@ -31,13 +31,13 @@ struct LiveContainerView: View {
                         Text(search.isEmpty ? "Make room for your apps" : "No matching apps").font(.headline)
                         Text(search.isEmpty ? "Import an IPA to add it to your built-in container library." : "Try a different name.")
                             .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center)
-                        if search.isEmpty { Button("Import IPA") { importing = true }.buttonStyle(.borderedProminent) }
+                        if search.isEmpty { SwiftUI.Button("Import IPA") { importing = true }.buttonStyle(.borderedProminent) }
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 50)
                 } else {
                     LazyVGrid(columns: columns, spacing: 28) {
                         ForEach(apps) { app in
-                            Button { container.open(app) } label: {
+                            SwiftUI.Button { container.open(app) } label: {
                                 VStack(spacing: 8) {
                                     Group {
                                         if let icon = app.icon { Image(uiImage: icon).resizable().scaledToFit() }
@@ -51,10 +51,10 @@ struct LiveContainerView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Open \(app.name)")
                             .contextMenu {
-                                Button { container.open(app) } label: { Label("Open", systemImage: "play.fill") }
+                                SwiftUI.Button { container.open(app) } label: { Label("Open", systemImage: "play.fill") }
                                 Text(app.bundleIdentifier)
                                 Text("Version \(app.version)")
-                                Button(role: .destructive) { deleting = app } label: { Label("Delete app and data", systemImage: "trash") }
+                                SwiftUI.Button(role: .destructive) { deleting = app } label: { Label("Delete app and data", systemImage: "trash") }
                             }
                         }
                     }
@@ -65,7 +65,7 @@ struct LiveContainerView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("LiveContainer")
         .searchable(text: $search, prompt: "Search apps")
-        .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button { importing = true } label: { Image(systemName: "plus") }.accessibilityLabel("Import IPA") } }
+        .toolbar { ToolbarItem(placement: .navigationBarTrailing) { SwiftUI.Button { importing = true } label: { Image(systemName: "plus") }.accessibilityLabel("Import IPA") } }
         .disabled(container.isBusy)
         .overlay { if container.isBusy { ProgressView("Preparing app…").padding(24).background(.regularMaterial).cornerRadius(20) } }
         .onAppear { container.reload() }
@@ -76,11 +76,11 @@ struct LiveContainerView: View {
             }
         }
         .alert("LiveContainer", isPresented: Binding(get: { container.errorMessage != nil }, set: { if !$0 { container.errorMessage = nil } })) {
-            Button("OK", role: .cancel) { container.errorMessage = nil }
+            SwiftUI.Button("OK", role: .cancel) { container.errorMessage = nil }
         } message: { Text(container.errorMessage ?? "") }
         .confirmationDialog("Delete \(deleting?.name ?? "app") and its data?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
-            Button("Delete app and data", role: .destructive) { if let deleting { container.delete(deleting) }; deleting = nil }
-            Button("Cancel", role: .cancel) { deleting = nil }
+            SwiftUI.Button("Delete app and data", role: .destructive) { if let deleting { container.delete(deleting) }; deleting = nil }
+            SwiftUI.Button("Cancel", role: .cancel) { deleting = nil }
         }
     }
 }
