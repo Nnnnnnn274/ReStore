@@ -14,7 +14,8 @@ from prepare_runtime import prepare
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "Dependencies/LiveContainer"
 FILES = ("LiveContainer/LCSharedUtils.m", "LiveContainer/LCBootstrap.m",
-         "LiveContainerSwiftUI/Utilities/LCUtils.m")
+         "LiveContainerSwiftUI/Utilities/LCUtils.m", "LiveContainerSwiftUI/Models/LCAppInfo.m",
+         "LiveContainer/LCMachOUtils.m")
 
 
 class RuntimeAdapterTests(unittest.TestCase):
@@ -66,7 +67,7 @@ xcodebuild() {
         LiveContainerShared|LiveContainerSwiftUI)
             mkdir -p "$destination/$target.framework"
             touch "$destination/$target.framework/$target" ;;
-        TweakLoader|ZSign) touch "$destination/$target.dylib" ;;
+        ZSign) touch "$destination/$target.dylib" ;;
         *) exit 2 ;;
     esac
 }
@@ -74,6 +75,13 @@ source "$TEST_BUILD_SCRIPT"
 ''', encoding="utf-8", newline="\n")
             products = root / "Host/ReStore.app"
             products.mkdir(parents=True)
+            # Cached products from the old build must never leak into the new IPA.
+            for directory in (root / "Derived/ReStoreLiveContainer/Products", products / "Frameworks",
+                              source / "Resources/Frameworks"):
+                directory.mkdir(parents=True, exist_ok=True)
+                (directory / "TweakLoader.dylib").touch()
+                (directory / "CydiaSubstrate.framework").mkdir()
+                (directory / "CydiaSubstrate.framework/CydiaSubstrate").touch()
             def shell_path(path):
                 absolute = Path(path).resolve().as_posix()
                 return "/" + absolute[0].lower() + absolute[2:] if os.name == "nt" else absolute
@@ -87,10 +95,12 @@ source "$TEST_BUILD_SCRIPT"
             result = subprocess.run([bash, shell_path(harness)], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             for name in ("LiveContainerShared.framework/LiveContainerShared",
-                         "LiveContainerSwiftUI.framework/LiveContainerSwiftUI", "TweakLoader.dylib",
+                         "LiveContainerSwiftUI.framework/LiveContainerSwiftUI",
                          "ZSign.dylib", "OpenSSL.framework/OpenSSL"):
                 self.assertTrue((products / "Frameworks" / name).is_file(), name)
             self.assertTrue((products / "LiveContainer-LICENSE.txt").is_file())
+            self.assertFalse((products / "Frameworks/TweakLoader.dylib").exists())
+            self.assertFalse((products / "Frameworks/CydiaSubstrate.framework").exists())
 
     def test_adapter_keeps_guest_bootstrap_and_returns_to_restore_host(self):
         originals = {name: (SOURCE / name).read_bytes() for name in FILES}
@@ -113,6 +123,21 @@ source "$TEST_BUILD_SCRIPT"
             self.assertIn("invokeAppMain(selectedApp, selectedContainer, argc, argv)", bootstrap)
             self.assertIn('dlsym(RTLD_DEFAULT, "ReStoreHostMain")', bootstrap)
             self.assertNotIn("return LiveContainerSwiftUIMain();", bootstrap)
+            self.assertNotIn("TweakLoader.dylib", bootstrap)
+            self.assertNotIn("LC_GLOBAL_TWEAKS_FOLDER", bootstrap)
+            self.assertNotIn("tweakLoaderLoaded = true", bootstrap)
+            app_info = (root / FILES[3]).read_text(encoding="utf-8")
+            self.assertIn("int currentPatchRev = 8;", app_info)
+            self.assertIn("[self setDontInjectTweakLoader:YES];", app_info)
+            self.assertIn("[self setDontLoadTweakLoader:YES];", app_info)
+            self.assertIn("LCPatchExecSlice(path, header, false)", app_info)
+            self.assertNotIn("LCPatchExecSlice(path, header, !", app_info)
+            self.assertIn('_info[@"LCPatchRevision"] = @(-1);', app_info)
+            macho = (root / FILES[4]).read_text(encoding="utf-8")
+            self.assertIn("} else if (doInject) {", macho)
+            # Preserve neutralization of old load commands and unrelated guest libraries.
+            self.assertIn("dylibLoaderCommand->cmd = doInject ? LC_LOAD_DYLIB : 0x114514;", macho)
+            self.assertIn("doInject ? tweakLoaderPath : libCppPath", macho)
             shared = (root / FILES[0]).read_text(encoding="utf-8")
             utils = (root / FILES[2]).read_text(encoding="utf-8")
             self.assertIn('@"ReStoreCertificateProvider"', shared)

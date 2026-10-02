@@ -120,6 +120,10 @@ jobs:
         if: steps.build_gate.outputs.should_skip != 'true'
         run: python3 scripts/ci/test_signing_keys.py
 
+      - name: LiveContainer runtime adapter checks
+        if: steps.build_gate.outputs.should_skip != 'true'
+        run: python3 scripts/livecontainer/test_runtime_adapter.py
+
       - name: Clean
         if: steps.build_gate.outputs.should_skip != 'true' && contains(github.event.head_commit.message, '[--clean-build]')
         run: |

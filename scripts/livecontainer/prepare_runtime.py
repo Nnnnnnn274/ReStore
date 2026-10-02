@@ -25,6 +25,12 @@ def replace_body(path, signature, body):
     write_source(path, source)
 
 
+def remove_section(source, start_marker, end_marker):
+    start = source.index(start_marker)
+    end = source.index(end_marker, start)
+    return source[:start] + source[end:]
+
+
 def prepare(root):
     shared = root / "LiveContainer/LCSharedUtils.m"
     utilities = root / "LiveContainerSwiftUI/Utilities/LCUtils.m"
@@ -61,7 +67,29 @@ __attribute__((visibility("default"))) void ReStoreLiveContainerInitialize(void)
     end = source.index(end_marker, start) + len(end_marker)
     source = source[:start] + """    int (*hostMain)(int, char **) = dlsym(RTLD_DEFAULT, "ReStoreHostMain");
     return hostMain ? hostMain(argc, argv) : 1;""" + source[end:]
+    source = remove_section(source, "    // Setup tweak loader", "    // If JIT is enabled")
+    source = remove_section(source, '    if(![guestAppInfo[@"dontInjectTweakLoader"] boolValue]) {',
+                            "    // Preload executable")
+    source = remove_section(source, '    if([guestAppInfo[@"dontInjectTweakLoader"] boolValue] &&',
+                            "    // Fix dynamic properties")
     write_source(bootstrap, source)
+
+    app_info = root / "LiveContainerSwiftUI/Models/LCAppInfo.m"
+    source = app_info.read_text(encoding="utf-8")
+    # Revision 8 re-patches existing guests to neutralize the old TweakLoader load command.
+    source = source.replace("    int currentPatchRev = 7;", """    [self setDontInjectTweakLoader:YES];
+    [self setDontLoadTweakLoader:YES];
+    int currentPatchRev = 8;""", 1)
+    source = source.replace("LCPatchExecSlice(path, header, ![self dontInjectTweakLoader])",
+                            "LCPatchExecSlice(path, header, false)", 1)
+    write_source(app_info, source)
+
+    macho = root / "LiveContainer/LCMachOUtils.m"
+    source = macho.read_text(encoding="utf-8")
+    # Keep removal of legacy injection, without adding a placeholder to fresh guests.
+    source = source.replace("    } else  {\n        if (freeLoadCommandCountLeft >= tweakLoaderLoadDylibCmdSize)",
+                            "    } else if (doInject) {\n        if (freeLoadCommandCountLeft >= tweakLoaderLoadDylibCmdSize)", 1)
+    write_source(macho, source)
 
 
 if __name__ == "__main__":

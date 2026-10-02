@@ -12,6 +12,7 @@
 - (void)setRelativeBundlePath:(NSString *)path;
 - (void)setDataUUID:(NSString *)uuid;
 - (void)setContainerInfo:(NSArray *)containers;
+- (NSMutableDictionary *)info;
 - (void)save;
 - (void)patchExecAndSignIfNeedWithCompletionHandler:(void (^)(BOOL, NSString *))completion
                                    progressHandler:(void (^)(NSProgress *))progress
@@ -105,14 +106,18 @@ NSDictionary *RSLCAppMetadata(NSString *bundlePath, NSError **error) {
     return metadata;
 }
 
+static void RSLCSignApp(id<RSLCAppInfo> info, BOOL force, void (^completion)(BOOL, NSString *)) {
+    Class provider = NSClassFromString(@"ReStoreCertificateProvider");
+    if (!((id (*)(id, SEL))objc_msgSend)(provider, NSSelectorFromString(@"certificatePassword"))) {
+        completion(NO, @"Import the certificate and private key that signed ReStore, or re-sign ReStore with your saved account before preparing container apps.");
+        return;
+    }
+    [info patchExecAndSignIfNeedWithCompletionHandler:completion progressHandler:^(NSProgress *progress) {} forceSign:force];
+}
+
 void RSLCPrepareApp(NSString *bundlePath, NSString *containerID, void (^completion)(BOOL, NSString *)) {
     NSError *error;
     if (!RSLCInitialize(&error)) { completion(NO, error.localizedDescription); return; }
-    Class provider = NSClassFromString(@"ReStoreCertificateProvider");
-    if (!((id (*)(id, SEL))objc_msgSend)(provider, NSSelectorFromString(@"certificatePassword"))) {
-        completion(NO, @"Import the certificate and private key that signed ReStore, or re-sign ReStore with your saved account before adding container apps.");
-        return;
-    }
     id<RSLCAppInfo> info = RSLCInfo(bundlePath);
     if (!info) { completion(NO, @"This IPA has no readable app bundle."); return; }
     [info setRelativeBundlePath:bundlePath.lastPathComponent];
@@ -120,7 +125,30 @@ void RSLCPrepareApp(NSString *bundlePath, NSString *containerID, void (^completi
     [info setContainerInfo:@[@{@"folderName": containerID, @"name": @"Default",
                               @"isolateAppGroup": @YES, @"spoofIdentifierForVendor": @YES}]];
     [info save];
-    [info patchExecAndSignIfNeedWithCompletionHandler:completion progressHandler:^(NSProgress *progress) {} forceSign:YES];
+    RSLCSignApp(info, YES, completion);
+}
+
+void RSLCPrepareAppForLaunch(NSString *bundlePath, void (^completion)(BOOL, NSString *)) {
+    NSError *error;
+    if (!RSLCInitialize(&error)) { completion(NO, error.localizedDescription); return; }
+    id<RSLCAppInfo> info = RSLCInfo(bundlePath);
+    if (!info) { completion(NO, @"Could not read this container app."); return; }
+    NSMutableDictionary *metadata = [info info];
+    if ([metadata[@"LCPatchRevision"] intValue] >= 8 &&
+        [metadata[@"dontInjectTweakLoader"] boolValue] && [metadata[@"dontLoadTweakLoader"] boolValue]) {
+        completion(YES, nil);
+        return;
+    }
+    // The adapter migrates legacy injection once, then leaves subsequent launches alone.
+    // Keep the existing data UUID and container list during migration.
+    RSLCSignApp(info, NO, ^(BOOL success, NSString *message) {
+        if (!success) {
+            // Upstream records the patch revision before signing; retry a failed migration.
+            metadata[@"LCPatchRevision"] = @(-1);
+            [info save];
+        }
+        completion(success, message);
+    });
 }
 
 BOOL RSLCOpenApp(NSString *relativePath, NSString *containerID, NSError **error) {
@@ -152,5 +180,6 @@ BOOL RSLCShouldLaunchGuest(void) { return NO; }
 int RSLCLaunchGuest(int argc, char **argv) { return -1; }
 NSDictionary *RSLCAppMetadata(NSString *path, NSError **error) { return nil; }
 void RSLCPrepareApp(NSString *path, NSString *containerID, void (^completion)(BOOL, NSString *)) { completion(NO, @"LiveContainer requires iOS."); }
+void RSLCPrepareAppForLaunch(NSString *path, void (^completion)(BOOL, NSString *)) { completion(NO, @"LiveContainer requires iOS."); }
 BOOL RSLCOpenApp(NSString *path, NSString *containerID, NSError **error) { return NO; }
 #endif

@@ -114,8 +114,33 @@ final class BuiltInLiveContainer: ObservableObject {
             errorMessage = "Wait for ReStore's app operations to finish before opening a container app."
             return
         }
-        var error: NSError?
-        if !RSLCOpenApp(app.id, app.containerID, &error) { errorMessage = error?.localizedDescription }
+        let appURL = applications.appendingPathComponent(app.id).standardizedFileURL
+        guard appURL.deletingLastPathComponent() == applications.standardizedFileURL,
+              appURL.pathExtension == "app",
+              UUID(uuidString: appURL.deletingPathExtension().lastPathComponent) != nil,
+              UUID(uuidString: app.containerID) != nil else {
+            errorMessage = "Invalid container path."
+            return
+        }
+        isBusy = true
+        Task {
+            defer { isBusy = false }
+            do {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    RSLCPrepareAppForLaunch(appURL.path) { success, message in
+                        if success { continuation.resume() }
+                        else { continuation.resume(throwing: OperationError.invalidApp(reason: message ?? "LiveContainer could not prepare this app.")) }
+                    }
+                }
+                guard !AppManager.shared.isActivelyManagingAnyApp else {
+                    throw OperationError.invalidParameters("Wait for ReStore's app operations to finish before opening a container app.")
+                }
+                var error: NSError?
+                if !RSLCOpenApp(app.id, app.containerID, &error) {
+                    throw error ?? OperationError.unknownResult as NSError
+                }
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
 
     func delete(_ app: ContainerApp) {

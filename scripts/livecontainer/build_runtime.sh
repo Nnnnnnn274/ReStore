@@ -32,7 +32,7 @@ if [[ ! -f "$runtime_build/fingerprint" ]] || [[ "$(cat "$runtime_build/fingerpr
     mkdir -p "$runtime_build/Source" "$runtime_products"
     rsync -a --exclude='.git' "$runtime_source/" "$runtime_build/Source/"
     python3 "$project_root/scripts/livecontainer/prepare_runtime.py" "$runtime_build/Source"
-    for runtime_target in LiveContainerShared LiveContainerSwiftUI TweakLoader ZSign; do
+    for runtime_target in LiveContainerShared LiveContainerSwiftUI ZSign; do
         xcodebuild build \
         -project "$runtime_build/Source/LiveContainer.xcodeproj" \
         -target "$runtime_target" \
@@ -48,23 +48,17 @@ fi
 
 framework_destination="${TARGET_BUILD_DIR:?}/${FRAMEWORKS_FOLDER_PATH:?}"
 mkdir -p "$framework_destination"
-for framework in "$runtime_products"/*.framework; do
-    [[ -d "$framework" ]] || continue
-    rsync -a "$framework/" "$framework_destination/$(basename "$framework")/"
+# Remove optional products left by older incremental builds.
+rm -f "$framework_destination/TweakLoader.dylib"
+rm -rf "$framework_destination/CydiaSubstrate.framework"
+for framework in LiveContainerShared LiveContainerSwiftUI; do
+    rsync -a "$runtime_products/$framework.framework/" "$framework_destination/$framework.framework/"
 done
-for library in "$runtime_products"/*.dylib; do
-    [[ -f "$library" ]] || continue
-    cp "$library" "$framework_destination/"
-done
-for required in TweakLoader ZSign; do
-    if [[ ! -f "$framework_destination/$required.dylib" ]]; then
-        echo "error: Required embedded runtime library $required was not built."
-        exit 1
-    fi
-done
-if [[ -d "$runtime_source/Resources/Frameworks/CydiaSubstrate.framework" ]]; then
-    rsync -a "$runtime_source/Resources/Frameworks/CydiaSubstrate.framework/" "$framework_destination/CydiaSubstrate.framework/"
+if [[ ! -f "$runtime_products/ZSign.dylib" ]]; then
+    echo "error: Required embedded runtime library ZSign was not built."
+    exit 1
 fi
+cp "$runtime_products/ZSign.dylib" "$framework_destination/"
 if [[ -d "$runtime_source/OpenSSL/Frameworks/iphoneos/OpenSSL.framework" ]]; then
     rsync -a "$runtime_source/OpenSSL/Frameworks/iphoneos/OpenSSL.framework/" "$framework_destination/OpenSSL.framework/"
 fi
