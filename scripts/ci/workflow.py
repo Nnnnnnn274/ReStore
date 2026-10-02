@@ -78,7 +78,7 @@ def count_new_commits(last_commit):
 # ----------------------------------------------------------
 def dump_project_settings(outdir=None):
     outfile = Path(outdir).resolve() / BUILD_SETTINGS_OUTFILE if outdir else BUILD_SETTINGS_OUTFILE
-    run(f"xcodebuild -showBuildSettings 2>&1 > '{outfile}'")
+    run(f"xcodebuild -project AltStore.xcodeproj -target SideStore -showBuildSettings > '{outfile}' 2>&1")
 
 def _extract_setting(cmd):
     out = runAndGet(cmd + " || true").strip()   # prevent grep failure from aborting
@@ -94,7 +94,7 @@ def _read_dumped_build_setting(name):
 
 def query_build_setting(name):
     return _extract_setting(
-        f"xcodebuild -showBuildSettings 2>&1 "
+        f"xcodebuild -project AltStore.xcodeproj -target SideStore -showBuildSettings 2>&1 "
         f"| grep '{name} = ' "
         "| tail -1 "
         "| sed -e 's/.*= //g'"
