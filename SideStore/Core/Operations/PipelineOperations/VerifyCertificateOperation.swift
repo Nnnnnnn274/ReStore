@@ -30,6 +30,16 @@ final class VerifyCertificateOperation: BasePipelineOperation<InstallAppOperatio
         self.setProgress(10)
         
         let team = try await AuthManager.shared.getAuthenticatedTeam()
+
+        if let identity = OperationSigningIdentity.current, identity.account == nil,
+           let profile = identity.profile, let certificate = self.context.targetSigningCertificate {
+            try ImportedSigningValidation.validate(profile, certificate: certificate)
+            let status = await ocspCheck(certificate.x509)
+            try processValidationResult(status, description: "Imported signing certificate", appName: self.context.bundleIdentifier, team: team)
+            self.context.targetCertStatus = status
+            self.setProgress(100)
+            return
+        }
         
         let bundleID = self.context.targetBundleIdentifier
         let (appName, installedAppSerial, initialStatus) = await self.fetchInstalledAppInitialState(bundleID: bundleID)
@@ -169,7 +179,7 @@ final class VerifyCertificateOperation: BasePipelineOperation<InstallAppOperatio
         var activeTeamID: String? = nil
         var isCustomCertActive = false
         
-        if let activeCert = CertificateManager.shared.activeCertificate?.certificate,
+        if let activeCert = self.context.targetSigningCertificate,
            let data = activeCert.data {
                 let details = parseCertificate(derData: data)
                 let belongsToAuthenticatedTeam = details.subject.contains(team.identifier) || details.issuer.contains(team.identifier)

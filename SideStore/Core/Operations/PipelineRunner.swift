@@ -105,6 +105,7 @@ final class PipelineRunner: Sendable
     {
         let operations = operations.filter { progress.progress(for: $0) == nil || progress.progress(for: $0)?.isCancelled == true }
         guard !operations.isEmpty else { throw OperationError.cancelled }
+        try await SavedSigningAccounts.shared.captureCurrentAccount()
         
         let backgroundTaskID = await MainActor.run {
             var taskID = UIBackgroundTaskIdentifier.invalid
@@ -166,48 +167,15 @@ final class PipelineRunner: Sendable
         }
         
         
-        /* Preflight SideStore specific validations */
-        let unhandledOperations = operations.filter { operation in
-            let isSideStore = (operation.app as? ALTApplication)?.isAltStoreApp == true ||
-                               operation.bundleIdentifier.isAltStoreAppID
-            
-            if isSideStore {
-                return handler.preflightChecksHandler.isResignActive == true
-            }
-            return true
-        }
-        
-        do {
-            let preflightContext = StandaloneOperationContext(steps: .preflightChecks, dbBackgroundContext: group.dbContext)
-            let validateOp = try PreflightChecksOperation(
-                operations: unhandledOperations,
-                handler: handler.preflightChecksHandler,
-                context: preflightContext
-            )
-            try await validateOp.execute()
-        } catch {
-            group.error = error
-            for operation in operations {
-                let elapsed = CFAbsoluteTimeGetCurrent() - group.operationStartTime
-                operation.logSummary(status: "FAILED", elapsed: elapsed, error: error)
-            }
-            throw error
-        }
-        
-        
         let operationsCount = operations.count
         let isCellularRefreshGroup = (operationsCount >= 2 && CellularRefreshManager.shared.isCellularMode)
         group.isCellularRefreshGroup = isCellularRefreshGroup
         debugLog("[PipelineRunner] Configured pipeline for \(operationsCount) operation(s): isCellularRefreshGroup = \(isCellularRefreshGroup) (isCellularMode = \(CellularRefreshManager.shared.isCellularMode))")
 
-        // run the operation pipeline
-        try await withThrowingTaskGroup(of: Void.self) { taskGroup in
-            for operation in operations {
-                taskGroup.addTask {
-                    try await self.performOperation(for: operation, handler: handler, group: group, operationsCount: operationsCount)
-                }
-            }
-            while let _ = try await taskGroup.next() {}
+        // Each operation carries its original identity; account changes never affect another app.
+        for operation in operations {
+            try Task.checkCancellation()
+            try await self.performOperation(for: operation, handler: handler, group: group, operationsCount: operationsCount)
         }
 
         // Run standalone batch profile injection if cellular refresh group with at least 2 operations
@@ -242,7 +210,21 @@ final class PipelineRunner: Sendable
             }
         }
         do {
-            let result = try await self.performPipeline(for: operation, handler: handler, group: group, operationsCount: operationsCount)
+            let identity = try await SavedSigningAccounts.shared.identity(for: operation, in: group.dbContext)
+            let result = try await OperationSigningIdentity.$current.withValue(identity) {
+                let isSideStore = (operation.app as? ALTApplication)?.isAltStoreApp == true || operation.bundleIdentifier.isAltStoreAppID
+                if identity != nil && (!isSideStore || handler.preflightChecksHandler.isResignActive == true) {
+                    let preflightContext = StandaloneOperationContext(steps: .preflightChecks, dbBackgroundContext: group.dbContext)
+                    let validation = try PreflightChecksOperation(operations: [operation],
+                                                                  handler: handler.preflightChecksHandler,
+                                                                  context: preflightContext)
+                    try await validation.execute()
+                }
+                return try await self.performPipeline(for: operation, handler: handler, group: group, operationsCount: operationsCount)
+            }
+            if let identity {
+                try await SavedSigningAccounts.shared.remember(identity, for: result.bundleIdentifier)
+            }
             if operationsCount <= 1 {
                 progress.set(nil, for: operation)
                 debugLog("[AppManager] performOperation: completed successfully. progress was reset for installedApp: \(result.bundleIdentifier)")
@@ -317,10 +299,10 @@ final class PipelineRunner: Sendable
             pipelineSteps: pipelineSteps,
             bundleIdentifier: operation.bundleIdentifier,
             dbBackgroundContext: group.dbContext,
-            sharedContext: group.sharedContext,
+            sharedContext: SharedPipelineContext(),
             handler: handler,
             additionalEntitlements: defaultEntitlements,
-            activeSigningCertificate: CertificateManager.shared.activeCertificate?.certificate
+            activeSigningCertificate: OperationSigningIdentity.current?.certificate ?? CertificateManager.shared.activeCertificate?.certificate
         )
         context.isCellularRefreshGroup = group.isCellularRefreshGroup
         context.groupOperationsCount = operationsCount
@@ -344,6 +326,14 @@ final class PipelineRunner: Sendable
             context.customBundleIdentifier = app.customBundleIdentifier
             context.targetAppBundle = ALTApplication(fileURL: app.fileURL)
         }
+        if let profile = OperationSigningIdentity.current?.profile {
+            context.overrideProvisioningProfile = profile
+            context.overrideSigningCertificate = OperationSigningIdentity.current?.certificate
+            context.appendTeamID = false
+            if let app = operation.app as? InstalledApp, context.customBundleIdentifier == nil {
+                context.customBundleIdentifier = app.resignedBundleIdentifier
+            }
+        }
         
         context.beginInstallationHandler = { (installedApp) in
             group.beginInstallationHandler?(installedApp)
@@ -366,7 +356,7 @@ final class PipelineRunner: Sendable
         
         let permissionsMode = UserDefaults.standard.permissionCheckingDisabled ? .none : permissionReviewMode
         let operationProgress = progress.progress(for: operation)
-        return try await PipelineExecutor.shared.executePipeline(
+        let result = try await PipelineExecutor.shared.executePipeline(
             steps: pipelineSteps,
             context: context,
             operation: operation,
@@ -375,6 +365,10 @@ final class PipelineRunner: Sendable
             permissionsMode: permissionsMode,
             operationProgress: operationProgress
         )
+        for batch in context.sharedContext.pendingProfiles.values {
+            group.sharedContext.addPendingProfileBatch(batch)
+        }
+        return result
     }
 }
 

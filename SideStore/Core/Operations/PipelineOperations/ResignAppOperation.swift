@@ -96,10 +96,10 @@ final class ResignAppOperation: BasePipelineOperation<InstallAppOperationContext
         var additionalValues: [String: Any] = [Bundle.Info.urlTypes: allURLSchemes]
 
         if targetAppBundle.isAltStoreApp {
-            if let activeCert = CertificateManager.shared.activeCertificate {
+            if let activeCert = self.context.targetSigningCertificate {
                 additionalValues[Bundle.Info.certificateID] = activeCert.serialNumber
                 let certURL = appBundle.fileURL.appendingPathComponent("ALTCertificate.p12")
-                try activeCert.p12Data.write(to: certURL, options: .atomic)
+                try CertificateStore.export(activeCert, password: activeCert.serialNumber).write(to: certURL, options: .atomic)
             } else {
                 self.verboseLog("[ResignAppOperation] No activeCertificate found in CertificateManager. Embedded certificate + certificate identifier in app bundle will not be updated.")
             }
@@ -129,7 +129,7 @@ final class ResignAppOperation: BasePipelineOperation<InstallAppOperationContext
         }
         var infoDictionary = parser.rawDictionary as [String: Any]
         
-        let newBundleID = appexBundleIds[identifier] ?? profile.bundleIdentifier
+        let newBundleID = appexBundleIds[identifier] ?? (profile.bundleIdentifier.contains("*") ? identifier : profile.bundleIdentifier)
         infoDictionary[kCFBundleIdentifierKey as String] = newBundleID
 
         // Fix-up BGTaskScheduler identifiers so they stay under the new bundle ID.
@@ -189,8 +189,16 @@ final class ResignAppOperation: BasePipelineOperation<InstallAppOperationContext
     }
     
     private func resignAppBundle(at fileURL: URL, team: ALTTeam, certificate: ALTCertificate, profiles: [ALTProvisioningProfile]) async throws -> URL {
-        let signer = ALTSigner(team: team, certificate: certificate)
-        try await signer.signApp(at: fileURL, provisioningProfiles: profiles, progress: nil)
+        let app = ALTApplication(fileURL: fileURL)
+        let containsContainerGroups = (app?.entitlements["keychain-access-groups"] as? [String])?.contains {
+            $0.contains(".com.kdt.livecontainer.shared")
+        } == true
+        if self.context.overrideProvisioningProfile != nil || (app?.isAltStoreApp == true && containsContainerGroups) {
+            try ImportedAppSigner.sign(at: fileURL, certificate: certificate, profiles: profiles)
+        } else {
+            let signer = ALTSigner(team: team, certificate: certificate)
+            try await signer.signApp(at: fileURL, provisioningProfiles: profiles, progress: nil)
+        }
         return fileURL
     }
     

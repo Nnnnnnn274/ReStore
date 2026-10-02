@@ -92,9 +92,8 @@ public final class CertificateManager: @unchecked Sendable {
             do {
                 let password = getPassword(for: cert)
                 let p12Data = try Self.convert(cert, password: password)
-                Keychain.shared.signingCertificate = p12Data
-                Keychain.shared.signingCertificatePassword = password
-                saveCertificate(cert)
+                try storeCertificate(cert)
+                try Keychain.shared.storeSigningCertificate(p12Data, password: password ?? "")
                 let active = ActiveSigningCertificate(certificate: cert, p12Data: p12Data, password: password)
                 self.activeCertificate = active
                 debugLog("[CertificateManager] setActiveCertificate: Successfully stored certificate (serial: \(cert.serialNumber)).")
@@ -127,19 +126,16 @@ public final class CertificateManager: @unchecked Sendable {
     }
 
     public func saveCertificate(_ cert: ALTCertificate) {
-        debugLog("[CertificateManager] saveCertificate started for serial: \(cert.serialNumber)")
-        defer { debugLog("[CertificateManager] saveCertificate completed for serial: \(cert.serialNumber)") }
-        
         do {
-            let password = getPassword(for: cert)
-            let p12Data = try Self.convert(cert, password: password)
-            debugLog("[CertificateManager] p12Data generated, size: \(p12Data.count)")
-            Keychain.shared[certificateSerial: cert.serialNumber] = p12Data
-            debugLog("[CertificateManager] Successfully saved p12 to keychain")
+            try storeCertificate(cert)
         } catch {
-            debugLog("[CertificateManager] Failed to export/save p12 to keychain: \(error)")
+            debugLog("[CertificateManager] Failed to store signing certificate: \(error)")
         }
-        
+    }
+
+    public func storeCertificate(_ cert: ALTCertificate) throws {
+        let p12Data = try Self.convert(cert, password: getPassword(for: cert))
+        try Keychain.shared.storeImportedCertificate(p12Data, serialNumber: cert.serialNumber)
         let serials = getImportedCertificateSerials()
         if !serials.contains(cert.serialNumber) {
             var updatedSerials = serials
@@ -157,15 +153,18 @@ public final class CertificateManager: @unchecked Sendable {
     }
 
     public func saveX509Certificate(_ x509: ALTX509Certificate) {
-        debugLog("[CertificateManager] saveX509Certificate started for serial: \(x509.serialNumber)")
-        defer { debugLog("[CertificateManager] saveX509Certificate completed for serial: \(x509.serialNumber)") }
-        
-        if let derData = x509.data {
-            debugLog("[CertificateManager] derData exists, size: \(derData.count)")
-            Keychain.shared[certificateSerial: x509.serialNumber] = derData
-            debugLog("[CertificateManager] Successfully saved der to keychain")
+        do {
+            try storeX509Certificate(x509)
+        } catch {
+            debugLog("[CertificateManager] Failed to store certificate: \(error)")
         }
-        
+    }
+
+    public func storeX509Certificate(_ x509: ALTX509Certificate) throws {
+        guard let derData = x509.data else {
+            throw OperationError.invalidParameters("The certificate contains no X.509 data.")
+        }
+        try Keychain.shared.storeImportedCertificate(derData, serialNumber: x509.serialNumber)
         let serials = getImportedCertificateSerials()
         if !serials.contains(x509.serialNumber) {
             var updatedSerials = serials

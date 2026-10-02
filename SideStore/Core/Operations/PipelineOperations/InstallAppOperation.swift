@@ -225,7 +225,7 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             #keyPath(InstalledApp.customBundleIdentifier), target,
             #keyPath(InstalledApp.resignedBundleIdentifier), resignedAppBundle.bundleIdentifier
         )
-        let customCertSerial = self.context.overrideSigningCertificate?.serialNumber
+        let customCertSerial = self.context.targetSigningCertificate?.serialNumber
         let installedApp = try InstalledApp.first(
                                 satisfying: predicate,
                                 in: backgroundContext
@@ -247,7 +247,9 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             installedApp.useMainProfile = context.useMainProfile
             installedApp.appBundleFingerprint = appBundleFingerprint
             let teamPredicate = NSPredicate(format: "%K == %@", #keyPath(Team.identifier), authTeam.identifier)
-            if let team = Team.first(satisfying: teamPredicate, in: backgroundContext) {
+            if self.context.overrideProvisioningProfile != nil {
+                installedApp.team = nil
+            } else if let team = Team.first(satisfying: teamPredicate, in: backgroundContext) {
                 installedApp.team = team
             }
             if let storeApp {

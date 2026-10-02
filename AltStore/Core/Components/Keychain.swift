@@ -87,6 +87,33 @@ public class Keychain
 
     // MARK: - Dynamic Imported Certificates Storage
 
+    public func savedSigningAccountsData() throws -> Data? {
+        try keychain.getData("restore.savedSigningAccounts")
+    }
+
+    public func setSavedSigningAccountsData(_ data: Data) throws {
+        try keychain.set(data, key: "restore.savedSigningAccounts")
+    }
+
+    public func storeImportedCertificate(_ data: Data, serialNumber: String) throws {
+        try keychain.set(data, key: "importedCert_" + serialNumber)
+    }
+
+    public func storeSigningCertificate(_ data: Data, password: String) throws {
+        let previousData = try keychain.getData("signingCertificate")
+        let previousPassword = try keychain.getString("signingCertificatePassword")
+        do {
+            try keychain.set(data, key: "signingCertificate")
+            try keychain.set(password, key: "signingCertificatePassword")
+        } catch {
+            if let previousData { try? keychain.set(previousData, key: "signingCertificate") }
+            else { try? keychain.remove("signingCertificate") }
+            if let previousPassword { try? keychain.set(previousPassword, key: "signingCertificatePassword") }
+            else { try? keychain.remove("signingCertificatePassword") }
+            throw error
+        }
+    }
+
     public subscript(certificateSerial serial: String) -> Data? {
         get { try? self.keychain.getData("importedCert_" + serial) }
         set {

@@ -24,12 +24,15 @@ final class RemoveAppOperation: BasePipelineOperation<InstallAppOperationContext
         }
         
         let backgroundContext = self.context.dbBackgroundContext
+        let bundleIdentifier = installedApp.bundleIdentifier
         
         await backgroundContext.perform {
             let installedAppInContext = backgroundContext.object(with: installedApp.objectID) as! InstalledApp
             CacheResignedMetadataOperation.clearCustomizations(for: installedAppInContext)
             backgroundContext.delete(installedAppInContext)
         }
+        try await SavedSigningAccounts.shared.forgetAssignment(for: bundleIdentifier)
+        ProfileManager.shared.setAssignedProfile(nil, for: bundleIdentifier)
         
         self.setProgress(100)
         return installedApp

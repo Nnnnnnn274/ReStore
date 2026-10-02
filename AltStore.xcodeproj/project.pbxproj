@@ -276,6 +276,7 @@
 				A8EEC3B92F4B0EFC00F2436D /* AltWidget */,
 				A8EEC3482F4B0D8600F2436D /* Shared */,
 				A8EECF2A2F4B195000F2436D /* SideStore */,
+				A0C0DE012026100200000012 /* ReStoreTests */,
 				A8EEC3D92F4B0FC800F2436D /* SideBackup */,
 				A8EEC71D2F4B10D900F2436D /* xcconfigs */,
 				BFD2476B2284B9A500981D42 /* Products */,
@@ -295,6 +296,7 @@
 			isa = PBXGroup;
 			children = (
 				BFD2476A2284B9A500981D42 /* SideStore.app */,
+				A0C0DE012026100200000011 /* ReStoreTests.xctest */,
 				BF58047B246A28F7008AE704 /* SideBackup.app */,
 				BF989167250AABF3002ACF50 /* AltWidgetExtension.appex */,
 			);
@@ -355,6 +357,7 @@
 				BFD247682284B9A500981D42 /* Resources */,
 				BF088D2B2501A087008082D9 /* Embed Frameworks */,
 				BF98917B250AABF4002ACF50 /* Embed Foundation Extensions */,
+				A0C0DE012026100200000001 /* Build Built-in LiveContainer */,
 			);
 			buildRules = (
 			);
@@ -436,6 +439,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				A0C0DE012026100200000010 /* ReStoreTests */,
 				BFD247692284B9A500981D42 /* SideStore */,
 				BF58047A246A28F7008AE704 /* SideBackup */,
 				BF989166250AABF3002ACF50 /* AltWidgetExtension */,
@@ -469,6 +473,18 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A0C0DE012026100200000001 /* Build Built-in LiveContainer */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ();
+			outputPaths = ();
+			name = "Build Built-in LiveContainer";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "bash \"${SRCROOT}/scripts/livecontainer/build_runtime.sh\"\n";
+		};
 		A8E00D3F2D0C9C6D000DD2C7 /* Build SideBackup.ipa */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -1057,6 +1073,53 @@
 			productName = SideSign;
 		};
 /* End XCSwiftPackageProductDependency section */
+        A0C0DE012026100200000010 /* ReStoreTests */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = A0C0DE012026100200000016;
+            buildPhases = (A0C0DE012026100200000013, A0C0DE012026100200000014, A0C0DE012026100200000015, );
+            buildRules = ();
+            dependencies = (A0C0DE012026100200000019, );
+            fileSystemSynchronizedGroups = (A0C0DE012026100200000012, );
+            name = ReStoreTests;
+            packageProductDependencies = (A8F5E9AE30422E3600DBD7E1, );
+            productName = ReStoreTests;
+            productReference = A0C0DE012026100200000011;
+            productType = "com.apple.product-type.bundle.unit-test";
+        };
+        A0C0DE012026100200000011 /* ReStoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReStoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+        A0C0DE012026100200000012 /* ReStoreTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests/ReStoreTests; sourceTree = "<group>"; };
+        A0C0DE012026100200000013 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+        A0C0DE012026100200000014 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A0C0DE01202610020000001B, ); runOnlyForDeploymentPostprocessing = 0; };
+        A0C0DE012026100200000015 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+        A0C0DE01202610020000001B = {isa = PBXBuildFile; productRef = A8F5E9AE30422E3600DBD7E1; };
+        A0C0DE012026100200000016 = {isa = XCConfigurationList; buildConfigurations = (A0C0DE012026100200000017, A0C0DE012026100200000018, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+        A0C0DE012026100200000017 = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)";
+                CODE_SIGN_STYLE = Automatic;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks", );
+                PRODUCT_BUNDLE_IDENTIFIER = com.restore.SigningTests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+                TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SideStore.app/SideStore";}; name = Debug; };
+        A0C0DE012026100200000018 = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)";
+                CODE_SIGN_STYLE = Automatic;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks", );
+                PRODUCT_BUNDLE_IDENTIFIER = com.restore.SigningTests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+                TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SideStore.app/SideStore";}; name = Release; };
+        A0C0DE012026100200000019 = {isa = PBXTargetDependency; target = BFD247692284B9A500981D42; targetProxy = A0C0DE01202610020000001A; };
+        A0C0DE01202610020000001A = {isa = PBXContainerItemProxy; containerPortal = BFD247622284B9A500981D42; proxyType = 1; remoteGlobalIDString = BFD247692284B9A500981D42; remoteInfo = SideStore; };
+
 	};
 	rootObject = BFD247622284B9A500981D42 /* Project object */;
 }

@@ -118,8 +118,9 @@ class CertificatesViewModel: ObservableObject {
         return CertificateManager.shared.getAllLocalX509Certificates()
     }
     
-    func saveLocalCertificate(_ cert: ALTCertificate) {
+    func saveLocalCertificate(_ cert: ALTCertificate) throws {
         var cert = cert
+        try ImportedSigningValidation.validatePrivateKey(cert)
         if let existing = self.certificates.first(where: { $0.serialNumber == cert.serialNumber }) {
             if cert.machineName == nil { cert.machineName = existing.machineName }
             if cert.machineIdentifier == nil { cert.machineIdentifier = existing.machineIdentifier }
@@ -141,7 +142,7 @@ class CertificatesViewModel: ObservableObject {
             if cert.serialNumDecimal == nil { cert.serialNumDecimal = existing.serialNumDecimal }
             if cert.sourceEndpoint == nil { cert.sourceEndpoint = existing.sourceEndpoint }
         }
-        CertificateManager.shared.saveCertificate(cert)
+        try CertificateManager.shared.storeCertificate(cert)
     }
     
     func deleteLocalCertificate(serialNumber: String) {
@@ -179,7 +180,7 @@ class CertificatesViewModel: ObservableObject {
                 
                 for remoteCert in remoteCerts {
                     if let signable = CertificateManager.shared.getSignableCertificate(for: remoteCert.serialNumber) {
-                        self.saveLocalCertificate(signable)
+                        try self.saveLocalCertificate(signable)
                     } else {
                         CertificateManager.shared.saveX509Certificate(remoteCert)
                     }
@@ -239,8 +240,13 @@ class CertificatesViewModel: ObservableObject {
                 failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                 importFailedCount += 1
             } else {
-                CertificateManager.shared.saveX509Certificate(rawCert)
-                recordSuccessfulImport(serial: rawCert.serialNumber, hasPrivateKey: false, filename: pending.filename)
+                do {
+                    try CertificateManager.shared.storeX509Certificate(rawCert)
+                    recordSuccessfulImport(serial: rawCert.serialNumber, hasPrivateKey: false, filename: pending.filename)
+                } catch {
+                    failedImportsList.append("\(pending.filename): \(error.localizedDescription)")
+                    importFailedCount += 1
+                }
             }
             currentImportIndex += 1
             processNextImport()
@@ -255,7 +261,7 @@ class CertificatesViewModel: ObservableObject {
                         failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                         importFailedCount += 1
                     } else {
-                        saveLocalCertificate(altCert)
+                        try saveLocalCertificate(altCert)
                         recordSuccessfulImport(serial: altCert.serialNumber, hasPrivateKey: true, filename: pending.filename)
                     }
                     currentImportIndex += 1
@@ -277,7 +283,7 @@ class CertificatesViewModel: ObservableObject {
                     failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                     importFailedCount += 1
                 } else {
-                    saveLocalCertificate(altCert)
+                    try saveLocalCertificate(altCert)
                     recordSuccessfulImport(serial: altCert.serialNumber, hasPrivateKey: true, filename: pending.filename)
                 }
                 currentImportIndex += 1
@@ -326,7 +332,7 @@ class CertificatesViewModel: ObservableObject {
                 failedImportsList.append("\(pending.filename): Duplicate certificate (already imported).")
                 importFailedCount += 1
             } else {
-                saveLocalCertificate(altCert)
+                try saveLocalCertificate(altCert)
                 recordSuccessfulImport(serial: altCert.serialNumber, hasPrivateKey: true, filename: pending.filename)
             }
             self.lastUsedPassword = importPasswordInput
@@ -366,7 +372,7 @@ class CertificatesViewModel: ObservableObject {
                 self.team    = try? await AuthManager.shared.getAuthenticatedTeam()
                 
                 let newCert = try await DeveloperPortalProxy.shared.createCertificate(machineName: machineName, type: type)
-                self.saveLocalCertificate(newCert)
+                try self.saveLocalCertificate(newCert)
                 self.alertMessage = "\(type.displayName) created successfully."
                 self.showAlert    = true
                 self.loadCertificates(presentingViewController: presentingViewController)
@@ -622,13 +628,11 @@ class CertificatesViewModel: ObservableObject {
         var error: Unmanaged<CFError>?
         let rsaAttr: [String: Any] = [kSecAttrKeyType as String: kSecAttrKeyTypeRSA, kSecAttrKeyClass as String: kSecAttrKeyClassPrivate]
         if let _ = SecKeyCreateWithData(data as CFData, rsaAttr as CFDictionary, &error) {
-            guard let pem = derToPEM(derData: data) else { throw PrivateKeyImportError.conversionFailed }
-            return pem
+            return data
         }
         let ecAttr: [String: Any] = [kSecAttrKeyType as String: kSecAttrKeyTypeEC, kSecAttrKeyClass as String: kSecAttrKeyClassPrivate]
         if let _ = SecKeyCreateWithData(data as CFData, ecAttr as CFDictionary, nil) {
-            guard let pem = derToPEM(derData: data) else { throw PrivateKeyImportError.conversionFailed }
-            return pem
+            return data
         }
         if let pemString = String(data: data, encoding: .utf8) {
             let clean = pemString.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -645,7 +649,8 @@ class CertificatesViewModel: ObservableObject {
         do {
             let key = try validateAndFormatPrivateKey(data: data)
             let signable = ALTCertificate(x509: cert, privateKey: key)
-            saveLocalCertificate(signable)
+            try ImportedSigningValidation.validatePrivateKey(signable)
+            try saveLocalCertificate(signable)
             self.loadCertificates(presentingViewController: nil)
             self.alertMessage = "Successfully added private key to certificate \(cert.name)."
             self.showAlert    = true

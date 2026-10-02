@@ -530,6 +530,7 @@ private struct AppleIDStep: View {
     @State private var isAuthenticated = AuthManager.shared.isAuthenticated
     @State private var isSigningIn = false
     @State private var errorMessage: String? = nil
+    @State private var importingSigning = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -546,7 +547,7 @@ private struct AppleIDStep: View {
                 Text(NSLocalizedString("Apple ID", comment: ""))
                     .font(.system(size: 28, weight: .bold))
 
-                Text(NSLocalizedString("SideStore requires an Apple ID to create development certificates and provisioning profiles for signing apps.", comment: ""))
+                Text(NSLocalizedString("Sign in with an Apple ID to create signing certificates and provisioning profiles, or import your own certificate, private key, and profile.", comment: ""))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -605,6 +606,18 @@ private struct AppleIDStep: View {
                 .frame(maxWidth: 420)
                 .padding(.horizontal, 32)
 
+                #if os(iOS)
+                SwiftUI.Button("Use a certificate and provisioning profile") { importingSigning = true }
+                    .disabled(isSigningIn)
+                    .sheet(isPresented: $importingSigning, onDismiss: {
+                        Task {
+                            if await SavedSigningAccounts.shared.selectedProfileID() != nil { onNext() }
+                        }
+                    }) { NavigationView { SigningImportView() } }
+                #endif
+
+                SwiftUI.Button("Set up signing later", action: onNext).disabled(isSigningIn)
+
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
@@ -644,6 +657,7 @@ private struct AppleIDStep: View {
 
 private struct CompleteStep: View {
     let onFinish: () -> Void
+    @State private var hasImportedIdentity = false
 
     private var hasPairingFile: Bool {
         PairingFileManager.shared.hasPairingFile()
@@ -688,9 +702,9 @@ private struct CompleteStep: View {
                 Divider()
 
                 summaryRow(
-                    title: NSLocalizedString("Apple ID", comment: ""),
-                    isConfigured: isAuthenticated,
-                    warning: NSLocalizedString("Can be added anytime in Settings", comment: "")
+                    title: NSLocalizedString("Signing", comment: ""),
+                    isConfigured: isAuthenticated || hasImportedIdentity,
+                    warning: NSLocalizedString("Choose an Apple account or import an identity in Signing", comment: "")
                 )
             }
             .padding(16)
@@ -714,6 +728,7 @@ private struct CompleteStep: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
         }
+        .task { hasImportedIdentity = await SavedSigningAccounts.shared.selectedProfileID() != nil }
     }
 
     private func summaryRow(title: String, isConfigured: Bool, warning: String) -> some View {

@@ -32,6 +32,7 @@ final class PreflightChecksOperation: BasePipelineOperation<StandaloneOperationC
 
         let currentTeam = try await AuthManager.shared.getAuthenticatedTeam()
         let currentTeamID = currentTeam.identifier
+        let usesImportedProfile = OperationSigningIdentity.current?.profile != nil
 
         let startProgress = self.progress.completedUnitCount
         let endProgress: Int64 = 90
@@ -57,7 +58,7 @@ final class PreflightChecksOperation: BasePipelineOperation<StandaloneOperationC
                 case .install(let app, let customBundleIdentifier), .update(let app, let customBundleIdentifier), .reinstall(let app, let customBundleIdentifier):
                     if let customBundleIdentifier = customBundleIdentifier, !customBundleIdentifier.isEmpty {
                         incomingTargetID = customBundleIdentifier
-                    } else if !currentTeamID.isEmpty {
+                    } else if !usesImportedProfile && !currentTeamID.isEmpty {
                         incomingTargetID = "\(StoreApp.altstoreAppID).\(currentTeamID)"
                     } else if let installedApp = app as? InstalledApp {
                         incomingTargetID = installedApp.customBundleIdentifier ?? installedApp.resignedBundleIdentifier
@@ -68,7 +69,7 @@ final class PreflightChecksOperation: BasePipelineOperation<StandaloneOperationC
                      .backup(let installedApp),     .restore(let installedApp),     .resign(let installedApp, _),
                      .removeApp(let installedApp),  .removeDeactivatedApp(let installedApp):
                     
-                    if !currentTeamID.isEmpty && installedApp.bundleIdentifier == StoreApp.altstoreAppID {
+                    if !usesImportedProfile && !currentTeamID.isEmpty && installedApp.bundleIdentifier == StoreApp.altstoreAppID {
                         incomingTargetID = installedApp.customBundleIdentifier ?? "\(StoreApp.altstoreAppID).\(currentTeamID)"
                     } else {
                         incomingTargetID = installedApp.customBundleIdentifier ?? installedApp.resignedBundleIdentifier

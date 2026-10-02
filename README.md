@@ -1,5 +1,33 @@
 # SideStore
 
+## ReStore continuation
+
+This checkout adds a two-section iOS interface: **LiveContainer** and **SideStore**. The large section buttons have a persistent hide/show control. SideStore's workspace keeps News, Sources, Browse, My Apps, Settings, and the new Signing screen accessible.
+
+Signing supports multiple Apple accounts, saved in Keychain. New installs use the selected account; existing apps retain their signing account and refresh sequentially with that account's credentials and certificate. Removing an account leaves its apps assigned to it, so refreshing asks for the missing account instead of silently changing the signer.
+
+The Signing screen and onboarding also accept custom identities without Apple ID login. Import a `.p12`/`.pfx` bundle, or a `.cer`/`.crt`/`.der`/`.pem` certificate with its unencrypted private key, together with a matching `.mobileprovision`. The importer verifies the key pair, certificate authorization, and expiration. Installation also checks the device and each app/extension identifier. Import separate profiles for extensions when a wildcard profile does not authorize them. Assign renewed profiles to existing apps through All provisioning profiles.
+
+LiveContainer 3.8.0 is compiled from the pinned source submodule and embedded as frameworks and libraries during the SideStore build. The build adapter changes a derived copy of the source to return to ReStore's UI and obtain signing keys from the host's Keychain provider. Container guests use LiveContainer's executable preparation and runtime hooks. Import, launch, search, and delete are available in the app library. Preparing guests requires the certificate and private key that signed the running ReStore app; re-sign ReStore if that identity is unavailable. Opening a guest restarts the host process.
+
+### Building and validation
+
+Use macOS and an Xcode version supporting this project's synchronized groups. Initialize recursive dependencies before opening `AltStore.xcodeproj`:
+
+```sh
+git submodule update --init --recursive
+python3 scripts/livecontainer/test_runtime_adapter.py
+```
+
+Configure signing using `CodeSigning.xcconfig.sample`, then build the SideStore target for an iOS device. Its **Build Built-in LiveContainer** phase compiles and embeds the runtime automatically; no IPA injection step is needed. Simulator builds omit the guest runtime. The `ReStoreTests` scheme contains account isolation and provisioning identifier regression tests:
+
+```sh
+xcodebuild test -project AltStore.xcodeproj -scheme ReStoreTests \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+
+Choose an installed simulator name on your Mac. Windows can run the adapter tests and inspect project configuration, but cannot build or run the UIKit, Security, signing, installation, or guest runtime integration. A device build and tests with two accounts and real matching signing identities remain necessary before distributing an IPA.
+
 > SideStore is an *untethered, community driven* alternative app store for non-jailbroken iOS devices 
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)

@@ -21,28 +21,32 @@ final class UpdateAppCertificateOperation: BasePipelineOperation<InstallAppOpera
             debugLog("[UpdateAppCertificateOperation] execute() took: \(String(format: "%.3fs", elapsed))")
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
+
+        if OperationSigningIdentity.current?.account != nil {
+            // Account certificate renewal must apply to its own apps, never another account's key.
+            self.setProgress(100)
+            return
+        }
         
         let targetBundleID = self.context.installedApp?.bundleIdentifier ?? self.context.targetBundleIdentifier
         let profileToUse = self.context.overrideProvisioningProfile ?? ProfileManager.shared.getAssignedProfile(for: targetBundleID)
 
         if let assignedProfile = profileToUse {
+            guard let matchingCert = ProfileManager.shared.getMatchingCertificate(for: assignedProfile) else {
+                throw OperationError.invalidParameters("The assigned profile's certificate and private key are missing. Restore them in Signing.")
+            }
+            try ImportedSigningValidation.validate(assignedProfile, certificate: matchingCert)
             debugLog("[UpdateAppCertificateOperation] Target bundle '\(targetBundleID)' using assigned profile: '\(assignedProfile.name)' (\(assignedProfile.uuid))")
             self.context.overrideProvisioningProfile = assignedProfile
 
-            if let matchingCert = ProfileManager.shared.getMatchingCertificate(for: assignedProfile) {
-                debugLog("[UpdateAppCertificateOperation] Loaded matching certificate '\(matchingCert.serialNumber)' for assigned profile. Setting context.overrideSigningCertificate.")
-                self.context.overrideSigningCertificate = matchingCert
-            } else if let serialNumber = self.context.installedApp?.certificateSerialNumber,
-                      let customCert = CertificateManager.shared.getSignableCertificate(for: serialNumber) {
-                self.context.overrideSigningCertificate = customCert
-            }
+            self.context.overrideSigningCertificate = matchingCert
         } else if let installedApp = self.context.installedApp, let serialNumber = installedApp.certificateSerialNumber {
             debugLog("[UpdateAppCertificateOperation] InstalledApp '\(installedApp.name)' has custom certificate serial: '\(serialNumber)'")
             if let customCert = CertificateManager.shared.getSignableCertificate(for: serialNumber) {
                 debugLog("[UpdateAppCertificateOperation] Loaded custom certificate '\(customCert.serialNumber)' for app '\(installedApp.name)'. Setting context.overrideSigningCertificate.")
                 self.context.overrideSigningCertificate = customCert
             } else {
-                debugLog("[UpdateAppCertificateOperation] WARNING: Signable certificate with serial '\(serialNumber)' not found for app '\(installedApp.name)'.")
+                throw OperationError.invalidParameters("The certificate and private key that signed '\(installedApp.name)' are missing. Restore them in Signing.")
             }
         }
         

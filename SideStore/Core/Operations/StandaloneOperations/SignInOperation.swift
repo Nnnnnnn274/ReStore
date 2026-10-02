@@ -89,7 +89,7 @@ final class SignInOperation: BaseStandaloneOperation<StandaloneOperationContext,
             if !AuthManager.shared.hasStoredPassword &&
                !AuthManager.shared.hasStoredXcodeToken
             {
-                await AuthManager.shared.signOut()
+                await AuthManager.shared.signOut(forgetSavedAccount: false)
             }
             try? await self.finalizeAuthentication(result: .failure(error))
             throw error
@@ -181,6 +181,12 @@ final class SignInOperation: BaseStandaloneOperation<StandaloneOperationContext,
 
         // 1. Resolve Certificate (Custom vs Developer Portal)
         self.verboseLog("[SignInOperation] Resolving signing certificate...")
+        // Reuse a saved key only for the account and team being authenticated.
+        if let saved = try await SavedSigningAccounts.shared.accounts().first(where: {
+            $0.appleID == self.appleIDEmailAddress && $0.teamIdentifier == team.identifier
+        }), let certificate = saved.certificate {
+            try CertificateManager.shared.setActiveCertificate(certificate)
+        }
         let resolvedCertificate: ALTCertificate?
         if let certificate = try await self.certificateFlow.resolveCertificate(for: team) {
             self.debugLog("[SignInOperation] Resolved signing certificate (serial: \(certificate.serialNumber)).")
@@ -203,6 +209,7 @@ final class SignInOperation: BaseStandaloneOperation<StandaloneOperationContext,
             }
         }
 
+        try await SavedSigningAccounts.shared.captureCurrentAccount(team: team, certificate: resolvedCertificate)
         return SignInResult(
             team: team,
             certificate: resolvedCertificate,
@@ -287,6 +294,7 @@ private extension SignInOperation {
             }
             
             team.update(team: altTeam)
+            team.account = account
             
             if makeActive {
                 // Account

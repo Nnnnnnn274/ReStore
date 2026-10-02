@@ -35,16 +35,38 @@ class FetchProvisioningProfilesOperation: BasePipelineOperation<InstallAppOperat
         let appExtensions = targetAppBundle.appExtensions
 
         if let overrideProfile = self.context.overrideProvisioningProfile {
-            self.debugLog("[FetchProvisioningProfiles] Using override provisioning profile '\(overrideProfile.name)' (\(overrideProfile.uuid)) for \(effectiveBundleId)")
-            var profiles = [effectiveBundleId: overrideProfile]
-            if !self.context.useMainProfile, !appExtensions.isEmpty {
-                for appExtension in appExtensions {
-                    let updatedExtensionBundleId = appExtension.bundleIdentifier.replacingOccurrences(of: targetAppBundle.bundleIdentifier, with: effectiveBundleId)
-                    profiles[updatedExtensionBundleId] = overrideProfile
-                }
+            guard let certificate = self.context.targetSigningCertificate else {
+                throw OperationError.invalidParameters("The imported profile's signing certificate is missing.")
             }
+            #if targetEnvironment(simulator)
+            let deviceID: String? = nil
+            #else
+            let deviceID: String? = try await fetchUDID(forceLive: true)
+            #endif
+            let localProfiles = ProfileManager.shared.getAllLocalProfiles()
+            func profileForBundle(_ identifier: String) throws -> ALTProvisioningProfile {
+                let candidates = [overrideProfile] + localProfiles.filter { $0.uuid != overrideProfile.uuid }
+                guard var matching = candidates.first(where: {
+                    $0.teamIdentifier == overrideProfile.teamIdentifier &&
+                    ImportedSigningValidation.permits($0, bundleIdentifier: identifier) &&
+                    $0.expirationDate > Date() &&
+                    $0.certificates.contains(where: { $0.data != nil && $0.data == certificate.data })
+                }) else {
+                    throw OperationError.missingProvisioningProfile(reason: "Import a profile authorizing '\(identifier)' and this signing certificate in Signing.")
+                }
+                try ImportedSigningValidation.validate(matching, certificate: certificate,
+                                                       bundleIdentifier: identifier, deviceID: deviceID)
+                // A wildcard authorizes the identifier; it must never become the app's actual bundle ID.
+                matching.bundleIdentifier = identifier
+                return matching
+            }
+            var profiles = [effectiveBundleId: try profileForBundle(effectiveBundleId)]
+            for appExtension in appExtensions {
+                let identifier = appExtension.bundleIdentifier.replacingOccurrences(of: targetAppBundle.bundleIdentifier, with: effectiveBundleId)
+                profiles[identifier] = try profileForBundle(identifier)
+            }
+            self.context.useMainProfile = false
             self.setProgress(100)
-            self.debugLog("[FetchProvisioningProfiles] Total override profiles prepared: \(profiles.count) -> keys: \(Array(profiles.keys))")
             return profiles
         }
 

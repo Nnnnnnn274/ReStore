@@ -24,6 +24,7 @@ public final class AuthManager: @unchecked Sendable {
     private var session: ALTAppleAPISession?
 
     public var isAuthenticated: Bool {
+        if let identity = OperationSigningIdentity.current { return identity.account != nil }
         let hasEmail = Keychain.shared.appleIDEmailAddress != nil
         let hasPassword = Keychain.shared.appleIDPassword != nil
         let hasToken = Keychain.shared.appleIDXcodeToken != nil
@@ -31,39 +32,56 @@ public final class AuthManager: @unchecked Sendable {
     }
     
     public var currentAppleID: String? {
-        get { Keychain.shared.appleIDEmailAddress }
+        get {
+            if let identity = OperationSigningIdentity.current { return identity.account?.appleID }
+            return Keychain.shared.appleIDEmailAddress
+        }
         set { Keychain.shared.appleIDEmailAddress = newValue }
     }
     
     public var password: String? {
-        get { Keychain.shared.appleIDPassword }
+        get {
+            if let identity = OperationSigningIdentity.current { return identity.account?.password }
+            return Keychain.shared.appleIDPassword
+        }
         set { Keychain.shared.appleIDPassword = newValue }
     }
     
     public var adsid: String? {
-        get { Keychain.shared.appleIDAdsid }
+        get {
+            if let identity = OperationSigningIdentity.current { return identity.account?.adsid }
+            return Keychain.shared.appleIDAdsid
+        }
         set { Keychain.shared.appleIDAdsid = newValue }
     }
     
     public var xcodeToken: String? {
-        get { Keychain.shared.appleIDXcodeToken }
+        get {
+            if let identity = OperationSigningIdentity.current { return identity.account?.xcodeToken }
+            return Keychain.shared.appleIDXcodeToken
+        }
         set { Keychain.shared.appleIDXcodeToken = newValue }
     }
     
     public var hasStoredPassword: Bool {
-        return Keychain.shared.appleIDPassword != nil
+        return password != nil
     }
     
     public var hasStoredXcodeToken: Bool {
-        return Keychain.shared.appleIDXcodeToken != nil
+        return xcodeToken != nil
     }
     
     public func signOut(
         keepCertificate: Bool = false,
         keepAnisetteData: Bool = true,
         keepAnisetteHeaders: Bool = true,
-        keepSideSignHeaders: Bool = true
+        keepSideSignHeaders: Bool = true,
+        forgetSavedAccount: Bool = true
     ) async {
+        if forgetSavedAccount, let appleID = Keychain.shared.appleIDEmailAddress {
+            do { try await SavedSigningAccounts.shared.forgetAccount(appleID: appleID) }
+            catch { debugLog("[AuthManager] Could not remove saved account credentials: \(error)") }
+        }
         self.session = nil
         self.team = nil
         if !keepCertificate {
@@ -97,7 +115,11 @@ public final class AuthManager: @unchecked Sendable {
     
     @discardableResult
     public func getAuthenticatedSession() async throws -> ALTAppleAPISession {
-        return try await TaskChainCoalescer.shared.coalesce(key: "apple_auth_session") {
+        if let identity = OperationSigningIdentity.current, identity.account == nil {
+            throw OperationError.invalidParameters("Imported signing must use local provisioning profiles instead of the Apple Developer Portal.")
+        }
+        let accountKey = OperationSigningIdentity.current?.account?.id ?? "active"
+        return try await TaskChainCoalescer.shared.coalesce(key: "apple_auth_session_" + accountKey) {
             guard let adsid = self.adsid,                           // directory services id
                   let xcodeToken = self.xcodeToken else             // xcode token
             {
@@ -119,6 +141,7 @@ public final class AuthManager: @unchecked Sendable {
     }
 
     public func getAuthenticatedTeam() async throws -> ALTTeam {
+        if let identity = OperationSigningIdentity.current { return identity.team }
         if let team = self.team {
             return team
         }
@@ -138,6 +161,7 @@ public final class AuthManager: @unchecked Sendable {
     }
     
     @discardableResult
+    @MainActor
     func signIn(
         presentingViewController: UIViewController? = nil,
         skipDeviceRegistration: Bool = false,
@@ -145,6 +169,21 @@ public final class AuthManager: @unchecked Sendable {
         skipResign: Bool = false,
         skipHowTos: Bool = false
     ) async throws -> SignInResult {
+        guard !signInInProgress, !AppManager.shared.isActivelyManagingAnyApp else {
+            throw OperationError.invalidParameters("Wait for the current app or sign-in operation to finish before adding an account.")
+        }
+        signInInProgress = true
+        defer { signInInProgress = false }
+        let previousAccount = try await SavedSigningAccounts.shared.captureCurrentAccount()
+        let previousCertificate = CertificateManager.shared.activeCertificate?.certificate
+        if let previousCertificate { try CertificateManager.shared.storeCertificate(previousCertificate) }
+        let previousCredentials = (Keychain.shared.appleIDEmailAddress, Keychain.shared.appleIDPassword,
+                                   Keychain.shared.appleIDAdsid, Keychain.shared.appleIDXcodeToken)
+        let previousTeam = self.team
+        let previousLimit = UserDefaults.standard.activeAppsLimit
+        CertificateManager.shared.clearActiveCertificate()
+        self.team = nil
+        self.session = nil
         let dbBackgroundContext = DatabaseManager.shared.persistentContainer.newBackgroundContext()
         let signInFlowHandler = SignInFlowHandler(presentingViewController: presentingViewController)
         let context = StandaloneOperationContext(
@@ -152,20 +191,41 @@ public final class AuthManager: @unchecked Sendable {
             dbBackgroundContext: dbBackgroundContext
         )
         
-        let signInOperation = try SignInOperation(
-            context: context,
-            signInHandler: signInFlowHandler,
-            anisetteServerHandler: signInFlowHandler,
-            skipDeviceRegistration: skipDeviceRegistration,
-            skipCertificateProvisioning: skipCertificateProvisioning,
-            skipResign: skipResign,
-            skipHowTos: skipHowTos
-        )
-        let result = try await signInOperation.execute()
-        self.team = result.team
-        self.session = result.session
-        return result
+        do {
+            let signInOperation = try SignInOperation(
+                context: context,
+                signInHandler: signInFlowHandler,
+                anisetteServerHandler: signInFlowHandler,
+                skipDeviceRegistration: skipDeviceRegistration,
+                skipCertificateProvisioning: skipCertificateProvisioning,
+                skipResign: skipResign,
+                skipHowTos: skipHowTos
+            )
+            let result = try await signInOperation.execute()
+            self.team = result.team
+            self.session = result.session
+            return result
+        } catch {
+            Keychain.shared.appleIDEmailAddress = previousCredentials.0
+            Keychain.shared.appleIDPassword = previousCredentials.1
+            Keychain.shared.appleIDAdsid = previousCredentials.2
+            Keychain.shared.appleIDXcodeToken = previousCredentials.3
+            UserDefaults.standard.activeAppsLimit = previousLimit
+            if let previousAccount {
+                do { try await SavedSigningAccounts.shared.restoreActiveAccount(previousAccount) }
+                catch { debugLog("[AuthManager] Could not restore the previous active account: \(error)") }
+                self.team = previousAccount.team
+            } else {
+                await DatabaseManager.shared.deactivateActiveAccountAndTeam()
+                self.team = previousTeam
+            }
+            do { try CertificateManager.shared.setActiveCertificate(previousCertificate) }
+            catch { debugLog("[AuthManager] Could not restore the previous active certificate: \(error)") }
+            throw error
+        }
     }
+
+    @MainActor private var signInInProgress = false
     
     
     // Developer Portal Operations

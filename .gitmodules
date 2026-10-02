@@ -9,3 +9,6 @@
 	url = https://github.com/SideStore/SideSign
 	branch = main
 
+[submodule "Dependencies/LiveContainer"]
+	path = Dependencies/LiveContainer
+	url = https://github.com/LiveContainer/LiveContainer.git
